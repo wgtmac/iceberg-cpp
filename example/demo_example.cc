@@ -17,10 +17,13 @@
  * under the License.
  */
 
-#include "iceberg/demo.h"
+#include "iceberg/puffin.h"
+#include "iceberg/table.h"
 
-namespace iceberg {
+#include <iostream>
 
-std::string_view hello() { return "Hello, Iceberg!"; }
-
-} // namespace iceberg
+int main() {
+  std::cout << iceberg::Table::create()->print() << std::endl;
+  std::cout << iceberg::Puffin::create()->print() << std::endl;
+  return 0;
+}

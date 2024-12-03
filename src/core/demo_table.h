@@ -17,11 +17,18 @@
  * under the License.
  */
 
-#include "iceberg/demo.h"
+#pragma once
 
-#include <iostream>
+#include "iceberg/table.h"
 
-int main() {
-  std::cout << iceberg::hello() << std::endl;
-  return 0;
-}
+namespace iceberg {
+
+class DemoTable : public Table {
+public:
+  DemoTable() = default;
+  ~DemoTable() override = default;
+
+  std::string_view print() const override;
+};
+
+} // namespace iceberg

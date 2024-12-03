@@ -15,14 +15,14 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# Please set CMAKE_PREFIX_PATH to the install prefix of iceberg.
-cmake_minimum_required(VERSION 3.25)
+set(ICEBERG_CORE_SOURCES demo_table.cc)
+set(ICEBERG_CORE_INCLUDES "${ICEBERG_API_DIR}")
 
-project(demo_example)
-
-find_package(iceberg CONFIG REQUIRED)
-find_package(puffin CONFIG REQUIRED)
-
-add_executable(demo_example demo_example.cc)
-
-target_link_libraries(demo_example iceberg::iceberg_core_static puffin::iceberg_puffin_static)
+ADD_ICEBERG_LIB(
+  iceberg_core
+  CMAKE_PACKAGE_NAME
+  iceberg
+  SOURCES
+  ${ICEBERG_CORE_SOURCES}
+  PRIVATE_INCLUDES
+  ${ICEBERG_CORE_INCLUDES})

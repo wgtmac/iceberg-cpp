@@ -15,8 +15,14 @@
 # specific language governing permissions and limitations
 # under the License.
 
-install(
-  DIRECTORY "iceberg/"
-  DESTINATION "${ICEBERG_INSTALL_INCLUDEDIR}/iceberg"
-  FILES_MATCHING
-  PATTERN "*.h")
+set(ICEBERG_PUFFIN_SOURCES demo_puffin.cc)
+set(ICEBERG_PUFFIN_INCLUDES "${ICEBERG_API_DIR}")
+
+ADD_ICEBERG_LIB(
+  iceberg_puffin
+  CMAKE_PACKAGE_NAME
+  puffin
+  SOURCES
+  ${ICEBERG_PUFFIN_SOURCES}
+  PRIVATE_INCLUDES
+  ${ICEBERG_PUFFIN_INCLUDES})
