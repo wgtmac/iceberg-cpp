@@ -18,7 +18,7 @@
 # Please set CMAKE_PREFIX_PATH to the install prefix of iceberg.
 cmake_minimum_required(VERSION 3.25)
 
-project(demo_example)
+project(example)
 
 find_package(iceberg CONFIG REQUIRED)
 find_package(puffin CONFIG REQUIRED)
