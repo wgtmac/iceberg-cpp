@@ -15,6 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
+# Borrowed the file from Apache Arrow:
+# https://github.com/apache/arrow/blob/main/cpp/cmake_modules/BuildUtils.cmake
+
 function(iceberg_install_cmake_package PACKAGE_NAME EXPORT_NAME)
   set(CONFIG_CMAKE "${PACKAGE_NAME}Config.cmake")
   set(BUILT_CONFIG_CMAKE "${CMAKE_CURRENT_BINARY_DIR}/${CONFIG_CMAKE}")
