@@ -21,6 +21,11 @@
 
 C++ implementation of [Apache Iceberg™](https://iceberg.apache.org/).
 
+## Requirements
+
+- CMake 3.25 or higher
+- C++20 compliant compiler
+
 ## Contribute
 
 Apache Iceberg is an active open-source project, governed under the Apache Software Foundation (ASF). Iceberg-cpp is open to people who want to contribute to it. Here are some ways to get involved:
