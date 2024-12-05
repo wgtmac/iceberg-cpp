@@ -110,7 +110,12 @@ function(ADD_ICEBERG_LIB LIB_NAME)
   endif()
 
   if(BUILD_SHARED)
-    add_library(${LIB_NAME}_shared SHARED ${LIB_DEPS})
+    add_library(${LIB_NAME}_shared SHARED)
+
+    if(LIB_DEPS)
+      target_sources(${LIB_NAME}_shared PRIVATE ${LIB_DEPS})
+    endif()
+
     if(EXTRA_DEPS)
       add_dependencies(${LIB_NAME}_shared ${EXTRA_DEPS})
     endif()
@@ -150,7 +155,12 @@ function(ADD_ICEBERG_LIB LIB_NAME)
   endif()
 
   if(BUILD_STATIC)
-    add_library(${LIB_NAME}_static STATIC ${LIB_DEPS})
+    add_library(${LIB_NAME}_static STATIC)
+
+    if(LIB_DEPS)
+      target_sources(${LIB_NAME}_static PRIVATE ${LIB_DEPS})
+    endif()
+
     if(EXTRA_DEPS)
       add_dependencies(${LIB_NAME}_static ${EXTRA_DEPS})
     endif()
