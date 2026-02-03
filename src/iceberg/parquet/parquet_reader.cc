@@ -26,6 +26,7 @@
 #include <string>
 
 #include <arrow/c/bridge.h>
+#include <arrow/extension_type.h>
 #include <arrow/memory_pool.h>
 #include <arrow/record_batch.h>
 #include <arrow/result.h>
@@ -110,7 +111,7 @@ Result<std::shared_ptr<Type>> ConvertArrowType(
       const auto& time_type = static_cast<const ::arrow::Time64Type&>(*type);
       if (time_type.unit() != ::arrow::TimeUnit::MICRO) {
         return InvalidSchema("Unsupported time unit for Arrow time type: {}",
-                             time_type.unit());
+                             static_cast<int>(time_type.unit()));
       }
       return iceberg::time();
     }
@@ -118,7 +119,7 @@ Result<std::shared_ptr<Type>> ConvertArrowType(
       const auto& timestamp_type = static_cast<const ::arrow::TimestampType&>(*type);
       if (timestamp_type.unit() != ::arrow::TimeUnit::MICRO) {
         return InvalidSchema("Unsupported time unit for Arrow timestamp type: {}",
-                             timestamp_type.unit());
+                             static_cast<int>(timestamp_type.unit()));
       }
       if (timestamp_type.timezone().empty()) {
         return iceberg::timestamp();
