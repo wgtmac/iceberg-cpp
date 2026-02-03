@@ -34,6 +34,7 @@
 
 #include "iceberg/arrow/arrow_fs_file_io_internal.h"
 #include "iceberg/arrow/arrow_status_internal.h"
+#include "iceberg/arrow_c_data_guard_internal.h"
 #include "iceberg/arrow/metadata_column_util_internal.h"
 #include "iceberg/parquet/parquet_data_util_internal.h"
 #include "iceberg/parquet/parquet_register.h"
@@ -113,12 +114,7 @@ class ParquetReader::Impl {
  public:
   // Open the Parquet reader with the given options
   Status Open(const ReaderOptions& options) {
-    if (options.projection == nullptr) {
-      return InvalidArgument("Projected schema is required by Parquet reader");
-    }
-
     split_ = options.split;
-    read_schema_ = options.projection;
 
     // Prepare reader properties
     ::parquet::ReaderProperties reader_properties(pool_);
@@ -133,6 +129,18 @@ class ParquetReader::Impl {
         ::parquet::ParquetFileReader::Open(input_stream_, reader_properties);
     ICEBERG_ARROW_RETURN_NOT_OK(::parquet::arrow::FileReader::Make(
         pool_, std::move(file_reader), arrow_reader_properties, &reader_));
+
+    if (options.projection != nullptr) {
+      read_schema_ = options.projection;
+    } else {
+      std::shared_ptr<::arrow::Schema> arrow_schema;
+      ICEBERG_ARROW_RETURN_NOT_OK(reader_->GetSchema(&arrow_schema));
+      ArrowSchema c_arrow_schema;
+      ICEBERG_ARROW_RETURN_NOT_OK(::arrow::ExportSchema(*arrow_schema, &c_arrow_schema));
+      internal::ArrowSchemaGuard guard(&c_arrow_schema);
+      ICEBERG_ASSIGN_OR_RAISE(auto schema, FromArrowSchema(c_arrow_schema, std::nullopt));
+      read_schema_ = std::move(schema);
+    }
 
     // Project read schema onto the Parquet file schema
     ICEBERG_ASSIGN_OR_RAISE(projection_, BuildProjection(reader_.get(), *read_schema_));
