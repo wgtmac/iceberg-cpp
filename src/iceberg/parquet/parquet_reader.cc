@@ -34,7 +34,7 @@
 
 #include "iceberg/arrow/arrow_fs_file_io_internal.h"
 #include "iceberg/arrow/arrow_status_internal.h"
-#include "iceberg/arrow/metadata_column_util_internal.h"
+#include "iceberg/arrow_c_data_guard_internal.h"
 #include "iceberg/arrow_c_data_guard_internal.h"
 #include "iceberg/parquet/parquet_data_util_internal.h"
 #include "iceberg/parquet/parquet_register.h"
