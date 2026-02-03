@@ -20,6 +20,8 @@
 #include <arrow/array.h>
 #include <arrow/c/bridge.h>
 #include <arrow/json/from_string.h>
+#include <arrow/record_batch.h>
+#include <arrow/table.h>
 #include <arrow/type.h>
 #include <gtest/gtest.h>
 
@@ -28,6 +30,7 @@
 #include "iceberg/file_reader.h"
 #include "iceberg/file_writer.h"
 #include "iceberg/parquet/parquet_register.h"
+#include "iceberg/schema.h"
 #include "iceberg/schema_internal.h"
 #include "iceberg/test/matchers.h"
 #include "iceberg/type.h"
@@ -117,7 +120,6 @@ TEST_F(ParquetReaderNoProjectionTest, ReadWithoutProjection) {
   auto reader_result = ReaderFactoryRegistry::Open(
       FileFormatType::kParquet, {.path = temp_parquet_file_, .io = file_io_});
 
-  // This is expected to fail currently
   ASSERT_THAT(reader_result, IsOk())
       << "Failed to create reader: " << reader_result.error().message;
   auto reader = std::move(reader_result.value());
