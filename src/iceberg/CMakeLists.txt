@@ -173,7 +173,6 @@ if(ICEBERG_BUILD_BUNDLE)
   set(ICEBERG_BUNDLE_SOURCES
       arrow/arrow_fs_file_io.cc
       arrow/metadata_column_util.cc
-      arrow_c_data_guard_internal.cc
       avro/avro_data_util.cc
       avro/avro_direct_decoder.cc
       avro/avro_direct_encoder.cc
@@ -186,8 +185,7 @@ if(ICEBERG_BUILD_BUNDLE)
       parquet/parquet_reader.cc
       parquet/parquet_register.cc
       parquet/parquet_schema_util.cc
-      parquet/parquet_writer.cc
-      schema_internal.cc)
+      parquet/parquet_writer.cc)
 
   # Libraries to link with exported libiceberg_bundle.{so,a}.
   set(ICEBERG_BUNDLE_STATIC_BUILD_INTERFACE_LIBS)
