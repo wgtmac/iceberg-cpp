@@ -17,6 +17,8 @@
  * under the License.
  */
 
+#include <arrow/c/bridge.h>
+#include <arrow/json/from_string.h>
 #include <gtest/gtest.h>
 
 #include "iceberg/arrow/arrow_fs_file_io_internal.h"
@@ -26,8 +28,6 @@
 #include "iceberg/schema_internal.h"
 #include "iceberg/test/matchers.h"
 #include "iceberg/type.h"
-#include <arrow/json/from_string.h>
-#include <arrow/c/bridge.h>
 
 namespace iceberg::parquet {
 
@@ -112,8 +112,7 @@ TEST_F(ParquetReaderNoProjectionTest, ReadWithoutProjection) {
 
   // No projection passed
   auto reader_result = ReaderFactoryRegistry::Open(
-      FileFormatType::kParquet,
-      {.path = temp_parquet_file_, .io = file_io_});
+      FileFormatType::kParquet, {.path = temp_parquet_file_, .io = file_io_});
 
   // This is expected to fail currently
   ASSERT_THAT(reader_result, IsOk())
