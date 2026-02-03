@@ -57,7 +57,7 @@ namespace {
 
 constexpr int32_t kUnknownFieldId = -1;
 
-int32_t GetFieldId(const std::shared_ptr<arrow::Field>& field) {
+int32_t GetFieldId(const std::shared_ptr<::arrow::Field>& field) {
   if (!field->metadata()) {
     return kUnknownFieldId;
   }
@@ -76,10 +76,10 @@ int32_t GetFieldId(const std::shared_ptr<arrow::Field>& field) {
 
 // Forward declaration
 Result<std::shared_ptr<Type>> ConvertArrowType(
-    const std::shared_ptr<arrow::DataType>& type);
+    const std::shared_ptr<::arrow::DataType>& type);
 
 Result<std::unique_ptr<SchemaField>> ToSchemaField(
-    const std::shared_ptr<arrow::Field>& field) {
+    const std::shared_ptr<::arrow::Field>& field) {
   ICEBERG_ASSIGN_OR_RAISE(auto field_type, ConvertArrowType(field->type()));
 
   auto field_id = GetFieldId(field);
@@ -88,35 +88,35 @@ Result<std::unique_ptr<SchemaField>> ToSchemaField(
 }
 
 Result<std::shared_ptr<Type>> ConvertArrowType(
-    const std::shared_ptr<arrow::DataType>& type) {
+    const std::shared_ptr<::arrow::DataType>& type) {
   switch (type->id()) {
-    case arrow::Type::BOOL:
+    case ::arrow::Type::BOOL:
       return iceberg::boolean();
-    case arrow::Type::INT32:
+    case ::arrow::Type::INT32:
       return iceberg::int32();
-    case arrow::Type::INT64:
+    case ::arrow::Type::INT64:
       return iceberg::int64();
-    case arrow::Type::FLOAT:
+    case ::arrow::Type::FLOAT:
       return iceberg::float32();
-    case arrow::Type::DOUBLE:
+    case ::arrow::Type::DOUBLE:
       return iceberg::float64();
-    case arrow::Type::DECIMAL128: {
-      const auto& decimal_type = static_cast<const arrow::Decimal128Type&>(*type);
+    case ::arrow::Type::DECIMAL128: {
+      const auto& decimal_type = static_cast<const ::arrow::Decimal128Type&>(*type);
       return iceberg::decimal(decimal_type.precision(), decimal_type.scale());
     }
-    case arrow::Type::DATE32:
+    case ::arrow::Type::DATE32:
       return iceberg::date();
-    case arrow::Type::TIME64: {
-      const auto& time_type = static_cast<const arrow::Time64Type&>(*type);
-      if (time_type.unit() != arrow::TimeUnit::MICRO) {
+    case ::arrow::Type::TIME64: {
+      const auto& time_type = static_cast<const ::arrow::Time64Type&>(*type);
+      if (time_type.unit() != ::arrow::TimeUnit::MICRO) {
         return InvalidSchema("Unsupported time unit for Arrow time type: {}",
                              time_type.unit());
       }
       return iceberg::time();
     }
-    case arrow::Type::TIMESTAMP: {
-      const auto& timestamp_type = static_cast<const arrow::TimestampType&>(*type);
-      if (timestamp_type.unit() != arrow::TimeUnit::MICRO) {
+    case ::arrow::Type::TIMESTAMP: {
+      const auto& timestamp_type = static_cast<const ::arrow::TimestampType&>(*type);
+      if (timestamp_type.unit() != ::arrow::TimeUnit::MICRO) {
         return InvalidSchema("Unsupported time unit for Arrow timestamp type: {}",
                              timestamp_type.unit());
       }
@@ -126,25 +126,25 @@ Result<std::shared_ptr<Type>> ConvertArrowType(
         return iceberg::timestamp_tz();
       }
     }
-    case arrow::Type::STRING:
-    case arrow::Type::LARGE_STRING:
+    case ::arrow::Type::STRING:
+    case ::arrow::Type::LARGE_STRING:
       return iceberg::string();
-    case arrow::Type::BINARY:
-    case arrow::Type::LARGE_BINARY:
+    case ::arrow::Type::BINARY:
+    case ::arrow::Type::LARGE_BINARY:
       return iceberg::binary();
-    case arrow::Type::FIXED_SIZE_BINARY: {
-      const auto& fixed_type = static_cast<const arrow::FixedSizeBinaryType&>(*type);
+    case ::arrow::Type::FIXED_SIZE_BINARY: {
+      const auto& fixed_type = static_cast<const ::arrow::FixedSizeBinaryType&>(*type);
       return iceberg::fixed(fixed_type.byte_width());
     }
-    case arrow::Type::EXTENSION: {
-      const auto& ext_type = static_cast<const arrow::ExtensionType&>(*type);
+    case ::arrow::Type::EXTENSION: {
+      const auto& ext_type = static_cast<const ::arrow::ExtensionType&>(*type);
       if (ext_type.extension_name() == "arrow.uuid") {
         return iceberg::uuid();
       }
       return ConvertArrowType(ext_type.storage_type());
     }
-    case arrow::Type::STRUCT: {
-      const auto& struct_type = static_cast<const arrow::StructType&>(*type);
+    case ::arrow::Type::STRUCT: {
+      const auto& struct_type = static_cast<const ::arrow::StructType&>(*type);
       std::vector<SchemaField> fields;
       fields.reserve(struct_type.num_fields());
       for (const auto& field : struct_type.fields()) {
@@ -153,13 +153,13 @@ Result<std::shared_ptr<Type>> ConvertArrowType(
       }
       return std::make_shared<StructType>(std::move(fields));
     }
-    case arrow::Type::LIST: {
-      const auto& list_type = static_cast<const arrow::ListType&>(*type);
+    case ::arrow::Type::LIST: {
+      const auto& list_type = static_cast<const ::arrow::ListType&>(*type);
       ICEBERG_ASSIGN_OR_RAISE(auto element_field, ToSchemaField(list_type.value_field()));
       return std::make_shared<ListType>(std::move(*element_field));
     }
-    case arrow::Type::MAP: {
-      const auto& map_type = static_cast<const arrow::MapType&>(*type);
+    case ::arrow::Type::MAP: {
+      const auto& map_type = static_cast<const ::arrow::MapType&>(*type);
       ICEBERG_ASSIGN_OR_RAISE(auto key_field, ToSchemaField(map_type.key_field()));
       ICEBERG_ASSIGN_OR_RAISE(auto value_field, ToSchemaField(map_type.item_field()));
       return std::make_shared<MapType>(std::move(*key_field), std::move(*value_field));
@@ -170,7 +170,7 @@ Result<std::shared_ptr<Type>> ConvertArrowType(
 }
 
 Result<std::unique_ptr<Schema>> InferIcebergSchema(
-    const std::shared_ptr<arrow::Schema>& schema, std::optional<int32_t> schema_id) {
+    const std::shared_ptr<::arrow::Schema>& schema, std::optional<int32_t> schema_id) {
   std::vector<SchemaField> fields;
   fields.reserve(schema->num_fields());
   for (const auto& field : schema->fields()) {
