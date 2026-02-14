@@ -23,48 +23,25 @@ Apache Iceberg C++ releases are available for download from our GitHub releases 
 
 ## Latest Release
 
-### Apache Iceberg C++ 0.1.0
+### Apache Iceberg C++ 0.2.0
 
-**Released:** September 15, 2024
+**Released:** January 26, 2025
 
-**Download:** [v0.1.0](https://github.com/apache/iceberg-cpp/releases/tag/v0.1.0)
+**Download:** [v0.2.0](https://github.com/apache/iceberg-cpp/releases/tag/v0.2.0)
 
-#### What's New
+#### Release Highlights
 
-This is the first official release of Apache Iceberg C++. This release includes:
-
-- **Core Libraries**: Basic CMake support and iceberg library structure
-- **Data Types**: Support for primitive types (int, long, string, boolean, etc.)
-- **Schema Management**: Schema field definitions and schema conversion
-- **Table Metadata**: Table metadata reading and writing capabilities
-- **File I/O**: Local file system support using Arrow FileSystem
-- **Avro Support**: Avro file reading and schema conversion
-- **Arrow Integration**: Arrow C Data Interface and schema conversion
-- **Partitioning**: Partition field and partition spec support
-- **Sorting**: Sort order and sort field definitions
-- **Expressions**: Basic expression support and literal types
-- **Catalog**: In-memory catalog implementation
-- **Table Scanning**: Basic table scan planning
-- **Testing**: Comprehensive test suite with GoogleTest
-- **Documentation**: API documentation generation with Doxygen
-
-#### Key Features
-
-- **C++23 Support**: Modern C++ features and standards
-- **Cross-Platform**: Support for Linux, macOS, and Windows
-- **Arrow Integration**: Seamless integration with Apache Arrow
-- **Avro Compatibility**: Full Avro file format support
-- **Memory Safety**: Smart pointer usage and RAII patterns
-- **Error Handling**: Comprehensive error handling with Result types
-- **Performance**: Optimized for high-performance data processing
+- **Table Scan and Data Access**: Support for v2 deletes and metadata column reads. Enhanced ManifestReader with projection and filtering. Implemented file scan task reader with Arrow C Stream integration.
+- **Table Operations**: Schema evolution (add, delete, update, and move columns). Table updates (properties, sort order, partition spec, location, and statistics). Transaction API with snapshot management (fast append).
+- **REST Catalog**: Full REST Catalog client with namespace operations and table CRUD operations. Support for create, load, drop, list, update, and stage-create table operations.
+- **Expression System**: Complete expression framework with literal expressions, type casting, and binary serialization. Inclusive/strict metrics evaluators, manifest evaluator, and residual evaluator. Aggregate expressions and projection evaluators.
+- **Performance and I/O**: Optimized Avro reader/writer with direct encoding and multi-block support. Configurable Avro and Parquet readers/writers.
+- **Catalog and Metadata**: InMemoryCatalog implementation with table management. Location provider and partition path generation. Schema selection, projection, and table metadata builder.
+- **Miscellaneous**: Meson build system support. Initial documentation website and devcontainer. Improved code organization and type safety with validation.
 
 #### Installation
 
-Download the release from GitHub and follow the installation instructions in our [Contributing guide](index.md).
-
-#### Breaking Changes
-
-This is the first release, so there are no breaking changes from previous versions.
+Download the release from GitHub and follow the installation instructions in our [Getting Started guide](getting-started.md).
 
 ## All Releases
 
@@ -74,7 +51,8 @@ For a complete list of all releases, including release notes and download links,
 
 | Version | Release Date | Status | Download |
 |---------|-------------|--------|----------|
-| [v0.1.0](https://github.com/apache/iceberg-cpp/releases/tag/v0.1.0) | September 15, 2024 | Latest | [Download](https://github.com/apache/iceberg-cpp/releases/tag/v0.1.0) |
+| [v0.2.0](https://github.com/apache/iceberg-cpp/releases/tag/v0.2.0) | January 26, 2025 | Latest | [Download](https://github.com/apache/iceberg-cpp/releases/tag/v0.2.0) |
+| [v0.1.0](https://github.com/apache/iceberg-cpp/releases/tag/v0.1.0) | September 15, 2024 | Stable | [Download](https://github.com/apache/iceberg-cpp/releases/tag/v0.1.0) |
 
 ## Release Process
 
@@ -93,11 +71,11 @@ Download the source code from our GitHub releases page:
 
 ```bash
 # Download latest release
-wget https://github.com/apache/iceberg-cpp/archive/refs/tags/v0.1.0.tar.gz
+wget https://github.com/apache/iceberg-cpp/archive/refs/tags/v0.2.0.tar.gz
 
 # Extract and build
-tar -xzf v0.1.0.tar.gz
-cd iceberg-cpp-0.1.0
+tar -xzf v0.2.0.tar.gz
+cd iceberg-cpp-0.2.0
 ```
 
 ### Pre-built Binaries
@@ -130,7 +108,7 @@ Releases are signed with the Apache Iceberg project GPG key. Verify signatures u
 gpg --keyserver keyserver.ubuntu.com --recv-keys B5690EEEBB952194
 
 # Verify the signature
-gpg --verify iceberg-cpp-0.1.0.tar.gz.asc iceberg-cpp-0.1.0.tar.gz
+gpg --verify iceberg-cpp-0.2.0.tar.gz.asc iceberg-cpp-0.2.0.tar.gz
 ```
 
 ## Support
