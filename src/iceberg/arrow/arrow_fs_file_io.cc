@@ -47,6 +47,9 @@ Result<std::string> ArrowFileSystemFileIO::ReadFile(const std::string& file_loca
     ICEBERG_ARROW_ASSIGN_OR_RETURN(
         auto read_bytes,
         file->Read(read_length, reinterpret_cast<uint8_t*>(&content[offset])));
+    if (read_bytes == 0) {
+      return IOError("Unexpected EOF while reading file: {} bytes remain", remain);
+    }
     remain -= read_bytes;
     offset += read_bytes;
   }
