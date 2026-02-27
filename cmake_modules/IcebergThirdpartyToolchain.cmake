@@ -260,10 +260,7 @@ function(resolve_nanoarrow_dependency)
     set(NANOARROW_URL "$ENV{ICEBERG_NANOARROW_URL}")
   else()
     set(NANOARROW_URL
-        "https://www.apache.org/dyn/closer.lua?action=download&filename=/arrow/apache-arrow-nanoarrow-0.7.0/apache-arrow-nanoarrow-0.7.0.tar.gz"
         "https://dlcdn.apache.org/arrow/apache-arrow-nanoarrow-0.7.0/apache-arrow-nanoarrow-0.7.0.tar.gz"
-        "https://archive.apache.org/dist/arrow/apache-arrow-nanoarrow-0.7.0/apache-arrow-nanoarrow-0.7.0.tar.gz"
-        "https://github.com/apache/arrow-nanoarrow/releases/download/apache-arrow-nanoarrow-0.7.0/apache-arrow-nanoarrow-0.7.0.tar.gz"
     )
   endif()
 
