@@ -47,8 +47,10 @@ markdown_extensions:
       permalink: true
 
 nav:
-  - Contributing: index.md
+  - Home: index.md
+  - Getting Started: getting-started.md
   - Releases: releases.md
+  - Contributing: contributing.md
   - API Documentation: api/index.html
 
 extra:
