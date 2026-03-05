@@ -92,6 +92,7 @@ jobs:
         run: |
           call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
           bash -c "ci/scripts/build_iceberg.sh $(pwd) OFF ON"
+          if %errorlevel% neq 0 exit /b %errorlevel%
           sccache --show-stats
       - name: Build Example
         shell: cmd
