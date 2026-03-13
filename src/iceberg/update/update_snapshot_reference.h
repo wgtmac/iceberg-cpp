@@ -39,7 +39,7 @@ namespace iceberg {
 class ICEBERG_EXPORT UpdateSnapshotReference : public PendingUpdate {
  public:
   static Result<std::shared_ptr<UpdateSnapshotReference>> Make(
-      std::shared_ptr<Transaction> transaction);
+      std::shared_ptr<TransactionContext> ctx);
 
   ~UpdateSnapshotReference() override;
 
@@ -145,7 +145,7 @@ class ICEBERG_EXPORT UpdateSnapshotReference : public PendingUpdate {
   Result<ApplyResult> Apply();
 
  private:
-  explicit UpdateSnapshotReference(std::shared_ptr<Transaction> transaction);
+  explicit UpdateSnapshotReference(std::shared_ptr<TransactionContext> ctx);
 
   UpdateSnapshotReference& ReplaceBranchInternal(const std::string& from,
                                                  const std::string& to,

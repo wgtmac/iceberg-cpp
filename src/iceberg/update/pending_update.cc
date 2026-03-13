@@ -20,20 +20,41 @@
 #include "iceberg/update/pending_update.h"
 
 #include "iceberg/transaction.h"
+#include "iceberg/util/macros.h"
 
 namespace iceberg {
 
-PendingUpdate::PendingUpdate(std::shared_ptr<Transaction> transaction)
-    : transaction_(std::move(transaction)) {}
+PendingUpdate::PendingUpdate(std::shared_ptr<TransactionContext> ctx)
+    : ctx_(std::move(ctx)) {}
 
 PendingUpdate::~PendingUpdate() = default;
 
-Status PendingUpdate::Commit() { return transaction_->Apply(*this); }
+Status PendingUpdate::Commit() {
+  if (!ctx_->transaction) {
+    // Table-created path: no transaction exists yet, create a temporary one.
+    ICEBERG_ASSIGN_OR_RAISE(auto txn, Transaction::Make(ctx_));
+    Status status = txn->Apply(*this);
+    if (status.has_value()) {
+      auto commit_result = txn->Commit();
+      if (!commit_result.has_value()) {
+        status = std::unexpected(commit_result.error());
+      }
+    }
+    std::ignore =
+        Finalize(status.has_value() ? std::nullopt : std::make_optional(status.error()));
+    return status;
+  }
+  auto txn = ctx_->transaction->lock();
+  if (!txn) {
+    return CommitFailed("Transaction has been destroyed");
+  }
+  return txn->Apply(*this);
+}
 
 Status PendingUpdate::Finalize([[maybe_unused]] std::optional<Error> commit_error) {
   return {};
 }
 
-const TableMetadata& PendingUpdate::base() const { return transaction_->current(); }
+const TableMetadata& PendingUpdate::base() const { return ctx_->current(); }
 
 }  // namespace iceberg

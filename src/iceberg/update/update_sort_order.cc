@@ -34,14 +34,13 @@
 namespace iceberg {
 
 Result<std::shared_ptr<UpdateSortOrder>> UpdateSortOrder::Make(
-    std::shared_ptr<Transaction> transaction) {
-  ICEBERG_PRECHECK(transaction != nullptr,
-                   "Cannot create UpdateSortOrder without a transaction");
-  return std::shared_ptr<UpdateSortOrder>(new UpdateSortOrder(std::move(transaction)));
+    std::shared_ptr<TransactionContext> ctx) {
+  ICEBERG_PRECHECK(ctx != nullptr, "Cannot create UpdateSortOrder without a context");
+  return std::shared_ptr<UpdateSortOrder>(new UpdateSortOrder(std::move(ctx)));
 }
 
-UpdateSortOrder::UpdateSortOrder(std::shared_ptr<Transaction> transaction)
-    : PendingUpdate(std::move(transaction)) {}
+UpdateSortOrder::UpdateSortOrder(std::shared_ptr<TransactionContext> ctx)
+    : PendingUpdate(std::move(ctx)) {}
 
 UpdateSortOrder::~UpdateSortOrder() = default;
 

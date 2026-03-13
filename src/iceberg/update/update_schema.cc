@@ -279,15 +279,14 @@ std::vector<SchemaField> ApplyChangesVisitor::MoveFields(
 }  // namespace
 
 Result<std::shared_ptr<UpdateSchema>> UpdateSchema::Make(
-    std::shared_ptr<Transaction> transaction) {
-  ICEBERG_PRECHECK(transaction != nullptr,
-                   "Cannot create UpdateSchema without transaction");
-  return std::shared_ptr<UpdateSchema>(new UpdateSchema(std::move(transaction)));
+    std::shared_ptr<TransactionContext> ctx) {
+  ICEBERG_PRECHECK(ctx != nullptr, "Cannot create UpdateSchema without context");
+  return std::shared_ptr<UpdateSchema>(new UpdateSchema(std::move(ctx)));
 }
 
-UpdateSchema::UpdateSchema(std::shared_ptr<Transaction> transaction)
-    : PendingUpdate(std::move(transaction)) {
-  const TableMetadata& base_metadata = transaction_->current();
+UpdateSchema::UpdateSchema(std::shared_ptr<TransactionContext> ctx)
+    : PendingUpdate(std::move(ctx)) {
+  const TableMetadata& base_metadata = ctx_->current();
 
   auto schema_result = base_metadata.Schema();
   if (!schema_result.has_value()) {

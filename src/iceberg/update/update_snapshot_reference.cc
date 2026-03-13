@@ -33,15 +33,15 @@
 namespace iceberg {
 
 Result<std::shared_ptr<UpdateSnapshotReference>> UpdateSnapshotReference::Make(
-    std::shared_ptr<Transaction> transaction) {
-  ICEBERG_PRECHECK(transaction != nullptr,
-                   "Cannot create UpdateSnapshotReference without a transaction");
+    std::shared_ptr<TransactionContext> ctx) {
+  ICEBERG_PRECHECK(ctx != nullptr,
+                   "Cannot create UpdateSnapshotReference without a context");
   return std::shared_ptr<UpdateSnapshotReference>(
-      new UpdateSnapshotReference(std::move(transaction)));
+      new UpdateSnapshotReference(std::move(ctx)));
 }
 
-UpdateSnapshotReference::UpdateSnapshotReference(std::shared_ptr<Transaction> transaction)
-    : PendingUpdate(std::move(transaction)), updated_refs_(base().refs) {}
+UpdateSnapshotReference::UpdateSnapshotReference(std::shared_ptr<TransactionContext> ctx)
+    : PendingUpdate(std::move(ctx)), updated_refs_(base().refs) {}
 
 UpdateSnapshotReference::~UpdateSnapshotReference() = default;
 
@@ -143,7 +143,7 @@ UpdateSnapshotReference& UpdateSnapshotReference::ReplaceBranchInternal(
   if (fast_forward) {
     // Fast-forward is valid only when the current branch (from) is an ancestor of the
     // target (to), i.e. we are moving forward in history.
-    const auto& base_metadata = transaction_->current();
+    const auto& base_metadata = ctx_->current();
     ICEBERG_BUILDER_ASSIGN_OR_RETURN(
         auto from_is_ancestor_of_to,
         SnapshotUtil::IsAncestorOf(

@@ -20,7 +20,11 @@
 
 #pragma once
 
+#include <cstdint>
 #include <memory>
+#include <optional>
+#include <string>
+#include <string_view>
 #include <vector>
 
 #include "iceberg/iceberg_export.h"
@@ -29,19 +33,24 @@
 
 namespace iceberg {
 
+/// \brief Whether a transaction creates a new table or updates an existing one.
+enum class TransactionKind : uint8_t { kCreate, kUpdate };
+
 /// \brief A transaction for performing multiple updates to a table
 class ICEBERG_EXPORT Transaction : public std::enable_shared_from_this<Transaction> {
  public:
-  enum class Kind : uint8_t { kCreate, kUpdate };
-
   ~Transaction();
 
   /// \brief Create a new transaction
   static Result<std::shared_ptr<Transaction>> Make(std::shared_ptr<Table> table,
-                                                   Kind kind, bool auto_commit);
+                                                   TransactionKind kind);
+
+  /// \brief Create a transaction from an existing context (used by PendingUpdate::Commit)
+  static Result<std::shared_ptr<Transaction>> Make(
+      std::shared_ptr<TransactionContext> ctx);
 
   /// \brief Return the Table that this transaction will update
-  const std::shared_ptr<Table>& table() const { return table_; }
+  const std::shared_ptr<Table>& table() const;
 
   /// \brief Returns the base metadata without any changes
   const TableMetadata* base() const;
@@ -109,8 +118,7 @@ class ICEBERG_EXPORT Transaction : public std::enable_shared_from_this<Transacti
   Result<std::shared_ptr<UpdateSnapshotReference>> NewUpdateSnapshotReference();
 
  private:
-  Transaction(std::shared_ptr<Table> table, Kind kind, bool auto_commit,
-              std::unique_ptr<TableMetadataBuilder> metadata_builder);
+  explicit Transaction(std::shared_ptr<TransactionContext> ctx);
 
   Status AddUpdate(const std::shared_ptr<PendingUpdate>& update);
 
@@ -133,22 +141,35 @@ class ICEBERG_EXPORT Transaction : public std::enable_shared_from_this<Transacti
  private:
   friend class PendingUpdate;
 
-  // The table that this transaction will update.
-  std::shared_ptr<Table> table_;
-  // The kind of this transaction.
-  const Kind kind_;
-  // Whether to auto-commit the transaction when updates are applied.
-  // This is useful when a temporary transaction is created for a single operation.
-  bool auto_commit_;
+  // Shared context owning the table, metadata builder, and kind.
+  std::shared_ptr<TransactionContext> ctx_;
+  // Keep track of all created pending updates.
+  std::vector<std::shared_ptr<PendingUpdate>> pending_updates_;
   // To make the state simple, we require updates are added and committed in order.
   bool last_update_committed_ = true;
   // Tracks if transaction has been committed to prevent double-commit
   bool committed_ = false;
-  // Keep track of all created pending updates. Use weak_ptr to avoid circular references.
-  // This is useful to retry failed updates.
-  std::vector<std::weak_ptr<PendingUpdate>> pending_updates_;
-  // Accumulated updates from all pending updates.
-  std::unique_ptr<TableMetadataBuilder> metadata_builder_;
+};
+
+/// \brief Shared context between Transaction and PendingUpdate instances.
+class ICEBERG_EXPORT TransactionContext {
+ public:
+  TransactionContext();
+  ~TransactionContext();
+
+  static Result<std::shared_ptr<TransactionContext>> Make(std::shared_ptr<Table> table,
+                                                          TransactionKind kind);
+
+  const TableMetadata* base() const;
+  const TableMetadata& current() const;
+  std::string MetadataFileLocation(std::string_view filename) const;
+
+  std::shared_ptr<Table> table;
+  std::unique_ptr<TableMetadataBuilder> metadata_builder;
+  TransactionKind kind;
+  // If PendingUpdate is created directly from Table, this is nullopt;
+  // otherwise, it holds a weak pointer to the Transaction that created it.
+  std::optional<std::weak_ptr<Transaction>> transaction;
 };
 
 }  // namespace iceberg

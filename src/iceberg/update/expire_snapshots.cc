@@ -38,14 +38,13 @@
 namespace iceberg {
 
 Result<std::shared_ptr<ExpireSnapshots>> ExpireSnapshots::Make(
-    std::shared_ptr<Transaction> transaction) {
-  ICEBERG_PRECHECK(transaction != nullptr,
-                   "Cannot create ExpireSnapshots without a transaction");
-  return std::shared_ptr<ExpireSnapshots>(new ExpireSnapshots(std::move(transaction)));
+    std::shared_ptr<TransactionContext> ctx) {
+  ICEBERG_PRECHECK(ctx != nullptr, "Cannot create ExpireSnapshots without a context");
+  return std::shared_ptr<ExpireSnapshots>(new ExpireSnapshots(std::move(ctx)));
 }
 
-ExpireSnapshots::ExpireSnapshots(std::shared_ptr<Transaction> transaction)
-    : PendingUpdate(std::move(transaction)),
+ExpireSnapshots::ExpireSnapshots(std::shared_ptr<TransactionContext> ctx)
+    : PendingUpdate(std::move(ctx)),
       current_time_ms_(CurrentTimePointMs()),
       default_max_ref_age_ms_(base().properties.Get(TableProperties::kMaxRefAgeMs)),
       default_min_num_snapshots_(
@@ -263,7 +262,7 @@ Result<ExpireSnapshots::ApplyResult> ExpireSnapshots::Apply() {
       ICEBERG_ASSIGN_OR_RAISE(auto snapshot, base.SnapshotById(snapshot_id));
       SnapshotCache snapshot_cache(snapshot.get());
       ICEBERG_ASSIGN_OR_RAISE(auto manifests,
-                              snapshot_cache.Manifests(transaction_->table()->io()));
+                              snapshot_cache.Manifests(ctx_->table->io()));
       for (const auto& manifest : manifests) {
         reachable_specs.insert(manifest.partition_spec_id);
       }

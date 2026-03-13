@@ -47,7 +47,7 @@ class ICEBERG_EXPORT FastAppend : public SnapshotUpdate {
   /// \param transaction The transaction to use for this update
   /// \return A Result containing the FastAppend instance or an error
   static Result<std::unique_ptr<FastAppend>> Make(
-      std::string table_name, std::shared_ptr<Transaction> transaction);
+      std::string table_name, std::shared_ptr<TransactionContext> ctx);
 
   /// \brief Append a data file to this update.
   ///
@@ -76,7 +76,7 @@ class ICEBERG_EXPORT FastAppend : public SnapshotUpdate {
   bool CleanupAfterCommit() const override;
 
  private:
-  explicit FastAppend(std::string table_name, std::shared_ptr<Transaction> transaction);
+  explicit FastAppend(std::string table_name, std::shared_ptr<TransactionContext> ctx);
 
   /// \brief Get the partition spec by spec ID.
   Result<std::shared_ptr<PartitionSpec>> Spec(int32_t spec_id);

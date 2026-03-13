@@ -34,7 +34,7 @@ namespace iceberg {
 class ICEBERG_EXPORT UpdateLocation : public PendingUpdate {
  public:
   static Result<std::shared_ptr<UpdateLocation>> Make(
-      std::shared_ptr<Transaction> transaction);
+      std::shared_ptr<TransactionContext> ctx);
 
   ~UpdateLocation() override;
 
@@ -50,7 +50,7 @@ class ICEBERG_EXPORT UpdateLocation : public PendingUpdate {
   Result<std::string> Apply();
 
  private:
-  explicit UpdateLocation(std::shared_ptr<Transaction> transaction);
+  explicit UpdateLocation(std::shared_ptr<TransactionContext> ctx);
 
   std::string location_;
 };

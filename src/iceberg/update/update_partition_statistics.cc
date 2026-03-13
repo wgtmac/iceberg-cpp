@@ -32,16 +32,16 @@
 namespace iceberg {
 
 Result<std::shared_ptr<UpdatePartitionStatistics>> UpdatePartitionStatistics::Make(
-    std::shared_ptr<Transaction> transaction) {
-  ICEBERG_PRECHECK(transaction != nullptr,
-                   "Cannot create UpdatePartitionStatistics without a transaction");
+    std::shared_ptr<TransactionContext> ctx) {
+  ICEBERG_PRECHECK(ctx != nullptr,
+                   "Cannot create UpdatePartitionStatistics without a context");
   return std::shared_ptr<UpdatePartitionStatistics>(
-      new UpdatePartitionStatistics(std::move(transaction)));
+      new UpdatePartitionStatistics(std::move(ctx)));
 }
 
 UpdatePartitionStatistics::UpdatePartitionStatistics(
-    std::shared_ptr<Transaction> transaction)
-    : PendingUpdate(std::move(transaction)) {}
+    std::shared_ptr<TransactionContext> ctx)
+    : PendingUpdate(std::move(ctx)) {}
 
 UpdatePartitionStatistics::~UpdatePartitionStatistics() = default;
 

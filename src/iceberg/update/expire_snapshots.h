@@ -64,7 +64,7 @@ enum class CleanupLevel : uint8_t {
 class ICEBERG_EXPORT ExpireSnapshots : public PendingUpdate {
  public:
   static Result<std::shared_ptr<ExpireSnapshots>> Make(
-      std::shared_ptr<Transaction> transaction);
+      std::shared_ptr<TransactionContext> ctx);
 
   ~ExpireSnapshots() override;
 
@@ -143,7 +143,7 @@ class ICEBERG_EXPORT ExpireSnapshots : public PendingUpdate {
   Result<ApplyResult> Apply();
 
  private:
-  explicit ExpireSnapshots(std::shared_ptr<Transaction> transaction);
+  explicit ExpireSnapshots(std::shared_ptr<TransactionContext> ctx);
 
   using SnapshotToRef = std::unordered_map<std::string, std::shared_ptr<SnapshotRef>>;
 

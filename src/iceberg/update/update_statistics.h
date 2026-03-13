@@ -39,7 +39,7 @@ namespace iceberg {
 class ICEBERG_EXPORT UpdateStatistics : public PendingUpdate {
  public:
   static Result<std::shared_ptr<UpdateStatistics>> Make(
-      std::shared_ptr<Transaction> transaction);
+      std::shared_ptr<TransactionContext> ctx);
 
   ~UpdateStatistics() override;
 
@@ -70,7 +70,7 @@ class ICEBERG_EXPORT UpdateStatistics : public PendingUpdate {
   Result<ApplyResult> Apply();
 
  private:
-  explicit UpdateStatistics(std::shared_ptr<Transaction> transaction);
+  explicit UpdateStatistics(std::shared_ptr<TransactionContext> ctx);
 
   std::unordered_map<int64_t, std::shared_ptr<StatisticsFile>> statistics_to_set_;
 };

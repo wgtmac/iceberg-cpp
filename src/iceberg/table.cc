@@ -32,11 +32,16 @@
 #include "iceberg/table_scan.h"
 #include "iceberg/transaction.h"
 #include "iceberg/update/expire_snapshots.h"
+#include "iceberg/update/fast_append.h"
+#include "iceberg/update/set_snapshot.h"
 #include "iceberg/update/snapshot_manager.h"
+#include "iceberg/update/update_location.h"
 #include "iceberg/update/update_partition_spec.h"
 #include "iceberg/update/update_partition_statistics.h"
 #include "iceberg/update/update_properties.h"
 #include "iceberg/update/update_schema.h"
+#include "iceberg/update/update_snapshot_reference.h"
+#include "iceberg/update/update_sort_order.h"
 #include "iceberg/update/update_statistics.h"
 #include "iceberg/util/macros.h"
 
@@ -166,71 +171,61 @@ Table::NewIncrementalChangelogScan() const {
 Result<std::shared_ptr<Transaction>> Table::NewTransaction() {
   // Create a brand new transaction object for the table. Users are expected to commit the
   // transaction manually.
-  return Transaction::Make(shared_from_this(), Transaction::Kind::kUpdate,
-                           /*auto_commit=*/false);
+  return Transaction::Make(shared_from_this(), TransactionKind::kUpdate);
 }
 
 Result<std::shared_ptr<UpdatePartitionSpec>> Table::NewUpdatePartitionSpec() {
   ICEBERG_ASSIGN_OR_RAISE(
-      auto transaction, Transaction::Make(shared_from_this(), Transaction::Kind::kUpdate,
-                                          /*auto_commit=*/true));
-  return transaction->NewUpdatePartitionSpec();
+      auto ctx, TransactionContext::Make(shared_from_this(), TransactionKind::kUpdate));
+  return UpdatePartitionSpec::Make(std::move(ctx));
 }
 
 Result<std::shared_ptr<UpdateProperties>> Table::NewUpdateProperties() {
   ICEBERG_ASSIGN_OR_RAISE(
-      auto transaction, Transaction::Make(shared_from_this(), Transaction::Kind::kUpdate,
-                                          /*auto_commit=*/true));
-  return transaction->NewUpdateProperties();
+      auto ctx, TransactionContext::Make(shared_from_this(), TransactionKind::kUpdate));
+  return UpdateProperties::Make(std::move(ctx));
 }
 
 Result<std::shared_ptr<UpdateSortOrder>> Table::NewUpdateSortOrder() {
   ICEBERG_ASSIGN_OR_RAISE(
-      auto transaction, Transaction::Make(shared_from_this(), Transaction::Kind::kUpdate,
-                                          /*auto_commit=*/true));
-  return transaction->NewUpdateSortOrder();
+      auto ctx, TransactionContext::Make(shared_from_this(), TransactionKind::kUpdate));
+  return UpdateSortOrder::Make(std::move(ctx));
 }
 
 Result<std::shared_ptr<UpdateSchema>> Table::NewUpdateSchema() {
   ICEBERG_ASSIGN_OR_RAISE(
-      auto transaction, Transaction::Make(shared_from_this(), Transaction::Kind::kUpdate,
-                                          /*auto_commit=*/true));
-  return transaction->NewUpdateSchema();
+      auto ctx, TransactionContext::Make(shared_from_this(), TransactionKind::kUpdate));
+  return UpdateSchema::Make(std::move(ctx));
 }
 
 Result<std::shared_ptr<ExpireSnapshots>> Table::NewExpireSnapshots() {
   ICEBERG_ASSIGN_OR_RAISE(
-      auto transaction, Transaction::Make(shared_from_this(), Transaction::Kind::kUpdate,
-                                          /*auto_commit=*/true));
-  return transaction->NewExpireSnapshots();
+      auto ctx, TransactionContext::Make(shared_from_this(), TransactionKind::kUpdate));
+  return ExpireSnapshots::Make(std::move(ctx));
 }
 
 Result<std::shared_ptr<UpdateLocation>> Table::NewUpdateLocation() {
   ICEBERG_ASSIGN_OR_RAISE(
-      auto transaction, Transaction::Make(shared_from_this(), Transaction::Kind::kUpdate,
-                                          /*auto_commit=*/true));
-  return transaction->NewUpdateLocation();
+      auto ctx, TransactionContext::Make(shared_from_this(), TransactionKind::kUpdate));
+  return UpdateLocation::Make(std::move(ctx));
 }
 
 Result<std::shared_ptr<FastAppend>> Table::NewFastAppend() {
   ICEBERG_ASSIGN_OR_RAISE(
-      auto transaction, Transaction::Make(shared_from_this(), Transaction::Kind::kUpdate,
-                                          /*auto_commit=*/true));
-  return transaction->NewFastAppend();
+      auto ctx, TransactionContext::Make(shared_from_this(), TransactionKind::kUpdate));
+  return FastAppend::Make(name().name, std::move(ctx));
 }
 
 Result<std::shared_ptr<UpdateStatistics>> Table::NewUpdateStatistics() {
   ICEBERG_ASSIGN_OR_RAISE(
-      auto transaction, Transaction::Make(shared_from_this(), Transaction::Kind::kUpdate,
-                                          /*auto_commit=*/true));
-  return transaction->NewUpdateStatistics();
+      auto ctx, TransactionContext::Make(shared_from_this(), TransactionKind::kUpdate));
+  return UpdateStatistics::Make(std::move(ctx));
 }
 
 Result<std::shared_ptr<UpdatePartitionStatistics>> Table::NewUpdatePartitionStatistics() {
   ICEBERG_ASSIGN_OR_RAISE(
-      auto transaction, Transaction::Make(shared_from_this(), Transaction::Kind::kUpdate,
-                                          /*auto_commit=*/true));
-  return transaction->NewUpdatePartitionStatistics();
+      auto ctx, TransactionContext::Make(shared_from_this(), TransactionKind::kUpdate));
+  return UpdatePartitionStatistics::Make(std::move(ctx));
 }
 
 Result<std::shared_ptr<SnapshotManager>> Table::NewSnapshotManager() {

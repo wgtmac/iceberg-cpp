@@ -34,14 +34,13 @@
 namespace iceberg {
 
 Result<std::shared_ptr<SetSnapshot>> SetSnapshot::Make(
-    std::shared_ptr<Transaction> transaction) {
-  ICEBERG_PRECHECK(transaction != nullptr,
-                   "Cannot create SetSnapshot without a transaction");
-  return std::shared_ptr<SetSnapshot>(new SetSnapshot(std::move(transaction)));
+    std::shared_ptr<TransactionContext> ctx) {
+  ICEBERG_PRECHECK(ctx != nullptr, "Cannot create SetSnapshot without a context");
+  return std::shared_ptr<SetSnapshot>(new SetSnapshot(std::move(ctx)));
 }
 
-SetSnapshot::SetSnapshot(std::shared_ptr<Transaction> transaction)
-    : PendingUpdate(std::move(transaction)) {}
+SetSnapshot::SetSnapshot(std::shared_ptr<TransactionContext> ctx)
+    : PendingUpdate(std::move(ctx)) {}
 
 SetSnapshot::~SetSnapshot() = default;
 
@@ -89,7 +88,7 @@ SetSnapshot& SetSnapshot::RollbackTo(int64_t snapshot_id) {
 Result<int64_t> SetSnapshot::Apply() {
   ICEBERG_RETURN_UNEXPECTED(CheckErrors());
 
-  const TableMetadata& base_metadata = transaction_->current();
+  const TableMetadata& base_metadata = ctx_->current();
 
   // If no target snapshot was configured, return current state (NOOP)
   if (!target_snapshot_id_.has_value()) {

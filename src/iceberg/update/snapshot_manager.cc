@@ -34,8 +34,7 @@ Result<std::shared_ptr<SnapshotManager>> SnapshotManager::Make(
     std::shared_ptr<Table> table) {
   ICEBERG_PRECHECK(table != nullptr, "Invalid input table: null");
   ICEBERG_ASSIGN_OR_RAISE(auto transaction,
-                          Transaction::Make(std::move(table), Transaction::Kind::kUpdate,
-                                            /*auto_commit=*/false));
+                          Transaction::Make(std::move(table), TransactionKind::kUpdate));
   return std::shared_ptr<SnapshotManager>(
       new SnapshotManager(std::move(transaction), /*is_external_transaction=*/false));
 }

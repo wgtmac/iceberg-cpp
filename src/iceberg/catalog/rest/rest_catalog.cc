@@ -384,8 +384,7 @@ Result<std::shared_ptr<Transaction>> RestCatalog::StageCreateTable(
                           StagedTable::Make(identifier, std::move(result.metadata),
                                             std::move(result.metadata_location), file_io_,
                                             shared_from_this()));
-  return Transaction::Make(std::move(staged_table), Transaction::Kind::kCreate,
-                           /*auto_commit=*/false);
+  return Transaction::Make(std::move(staged_table), TransactionKind::kCreate);
 }
 
 Status RestCatalog::DropTable(const TableIdentifier& identifier, bool purge) {

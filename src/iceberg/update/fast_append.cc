@@ -36,16 +36,15 @@
 namespace iceberg {
 
 Result<std::unique_ptr<FastAppend>> FastAppend::Make(
-    std::string table_name, std::shared_ptr<Transaction> transaction) {
+    std::string table_name, std::shared_ptr<TransactionContext> ctx) {
   ICEBERG_PRECHECK(!table_name.empty(), "Table name cannot be empty");
-  ICEBERG_PRECHECK(transaction != nullptr,
-                   "Cannot create FastAppend without a transaction");
+  ICEBERG_PRECHECK(ctx != nullptr, "Cannot create FastAppend without a context");
   return std::unique_ptr<FastAppend>(
-      new FastAppend(std::move(table_name), std::move(transaction)));
+      new FastAppend(std::move(table_name), std::move(ctx)));
 }
 
-FastAppend::FastAppend(std::string table_name, std::shared_ptr<Transaction> transaction)
-    : SnapshotUpdate(std::move(transaction)), table_name_(std::move(table_name)) {}
+FastAppend::FastAppend(std::string table_name, std::shared_ptr<TransactionContext> ctx)
+    : SnapshotUpdate(std::move(ctx)), table_name_(std::move(table_name)) {}
 
 FastAppend& FastAppend::AppendFile(const std::shared_ptr<DataFile>& file) {
   ICEBERG_BUILDER_CHECK(file != nullptr, "Invalid data file: null");
@@ -118,7 +117,7 @@ Result<std::vector<ManifestFile>> FastAppend::Apply(
   if (snapshot != nullptr) {
     auto cached_snapshot = SnapshotCache(snapshot.get());
     ICEBERG_ASSIGN_OR_RAISE(auto snapshot_manifests,
-                            cached_snapshot.Manifests(transaction_->table()->io()));
+                            cached_snapshot.Manifests(ctx_->table->io()));
     manifests.insert(manifests.end(), snapshot_manifests.begin(),
                      snapshot_manifests.end());
   }
@@ -179,9 +178,8 @@ Result<ManifestFile> FastAppend::CopyManifest(const ManifestFile& manifest) {
   int64_t snapshot_id = SnapshotId();
 
   // Copy the manifest with the new snapshot ID.
-  return CopyAppendManifest(manifest, transaction_->table()->io(), schema, spec,
-                            snapshot_id, new_manifest_path, current.format_version,
-                            &summary_);
+  return CopyAppendManifest(manifest, ctx_->table->io(), schema, spec, snapshot_id,
+                            new_manifest_path, current.format_version, &summary_);
 }
 
 Result<std::vector<ManifestFile>> FastAppend::WriteNewManifests() {

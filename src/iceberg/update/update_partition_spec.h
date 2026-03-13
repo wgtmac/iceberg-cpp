@@ -44,7 +44,7 @@ namespace iceberg {
 class ICEBERG_EXPORT UpdatePartitionSpec : public PendingUpdate {
  public:
   static Result<std::shared_ptr<UpdatePartitionSpec>> Make(
-      std::shared_ptr<Transaction> transaction);
+      std::shared_ptr<TransactionContext> ctx);
 
   ~UpdatePartitionSpec() override;
 
@@ -107,7 +107,7 @@ class ICEBERG_EXPORT UpdatePartitionSpec : public PendingUpdate {
   Result<ApplyResult> Apply();
 
  private:
-  explicit UpdatePartitionSpec(std::shared_ptr<Transaction> transaction);
+  explicit UpdatePartitionSpec(std::shared_ptr<TransactionContext> ctx);
 
   /// \brief Pair of source ID and transform string for indexing.
   using TransformKey = std::pair<int32_t, std::string>;
