@@ -29,10 +29,104 @@
 namespace iceberg {
 
 namespace {
-template <TypeId type_id>
-Literal TruncateLiteralImpl(const Literal& literal, int32_t width) {
-  std::unreachable();
+constexpr uint32_t kUtf8MaxCodePoint = 0x10FFFF;
+constexpr uint32_t kUtf8MinSurrogate = 0xD800;
+constexpr uint32_t kUtf8MaxSurrogate = 0xDFFF;
+
+std::optional<uint32_t> DecodeUtf8CodePoint(std::string_view source) {
+  if (source.empty()) {
+    return std::nullopt;
+  }
+
+  auto byte0 = static_cast<uint8_t>(source[0]);
+
+  // 1-byte sequence (ASCII): 0xxxxxxx
+  if (byte0 < 0x80) {
+    return byte0;
+  }
+
+  const auto size = source.size();
+
+  // 2-byte sequence: 110xxxxx 10xxxxxx
+  if ((byte0 & 0xE0) == 0xC0) {
+    if (size < 2) {
+      return std::nullopt;
+    }
+    auto byte1 = static_cast<uint8_t>(source[1]);
+    if ((byte1 & 0xC0) != 0x80) {
+      return std::nullopt;
+    }
+    uint32_t code_point = ((byte0 & 0x1F) << 6) | (byte1 & 0x3F);
+    // Check for overlong encoding
+    if (code_point < 0x80) {
+      return std::nullopt;
+    }
+    return code_point;
+  }
+
+  // 3-byte sequence: 1110xxxx 10xxxxxx 10xxxxxx
+  if ((byte0 & 0xF0) == 0xE0) {
+    if (size < 3) {
+      return std::nullopt;
+    }
+    auto byte1 = static_cast<uint8_t>(source[1]);
+    auto byte2 = static_cast<uint8_t>(source[2]);
+    if ((byte1 & 0xC0) != 0x80 || (byte2 & 0xC0) != 0x80) {
+      return std::nullopt;
+    }
+    uint32_t code_point = ((byte0 & 0x0F) << 12) | ((byte1 & 0x3F) << 6) | (byte2 & 0x3F);
+    // Check for overlong encoding and surrogate pairs
+    if (code_point < 0x800 ||
+        (code_point >= kUtf8MinSurrogate && code_point <= kUtf8MaxSurrogate)) {
+      return std::nullopt;
+    }
+    return code_point;
+  }
+
+  // 4-byte sequence: 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+  if ((byte0 & 0xF8) == 0xF0) {
+    if (size < 4) {
+      return std::nullopt;
+    }
+    auto byte1 = static_cast<uint8_t>(source[1]);
+    auto byte2 = static_cast<uint8_t>(source[2]);
+    auto byte3 = static_cast<uint8_t>(source[3]);
+    if ((byte1 & 0xC0) != 0x80 || (byte2 & 0xC0) != 0x80 || (byte3 & 0xC0) != 0x80) {
+      return std::nullopt;
+    }
+    uint32_t code_point = ((byte0 & 0x07) << 18) | ((byte1 & 0x3F) << 12) |
+                          ((byte2 & 0x3F) << 6) | (byte3 & 0x3F);
+    // Check for overlong encoding and valid Unicode range
+    if (code_point < 0x10000 || code_point > kUtf8MaxCodePoint) {
+      return std::nullopt;
+    }
+    return code_point;
+  }
+
+  // Invalid UTF-8 start byte
+  return std::nullopt;
 }
+
+void AppendUtf8CodePoint(uint32_t code_point, std::string& target) {
+  if (code_point <= 0x7F) {
+    target.push_back(static_cast<char>(code_point));
+  } else if (code_point <= 0x7FF) {
+    target.push_back(static_cast<char>(0xC0 | (code_point >> 6)));
+    target.push_back(static_cast<char>(0x80 | (code_point & 0x3F)));
+  } else if (code_point <= 0xFFFF) {
+    target.push_back(static_cast<char>(0xE0 | (code_point >> 12)));
+    target.push_back(static_cast<char>(0x80 | ((code_point >> 6) & 0x3F)));
+    target.push_back(static_cast<char>(0x80 | (code_point & 0x3F)));
+  } else {
+    target.push_back(static_cast<char>(0xF0 | (code_point >> 18)));
+    target.push_back(static_cast<char>(0x80 | ((code_point >> 12) & 0x3F)));
+    target.push_back(static_cast<char>(0x80 | ((code_point >> 6) & 0x3F)));
+    target.push_back(static_cast<char>(0x80 | (code_point & 0x3F)));
+  }
+}
+
+template <TypeId type_id>
+Literal TruncateLiteralImpl(const Literal& literal, int32_t width) = delete;
 
 template <>
 Literal TruncateLiteralImpl<TypeId::kInt>(const Literal& literal, int32_t width) {
@@ -72,7 +166,79 @@ Literal TruncateLiteralImpl<TypeId::kBinary>(const Literal& literal, int32_t wid
   return Literal::Binary(std::vector<uint8_t>(data.begin(), data.begin() + width));
 }
 
+template <TypeId type_id>
+Result<Literal> TruncateLiteralMaxImpl(const Literal& literal, int32_t width) = delete;
+
+template <>
+Result<Literal> TruncateLiteralMaxImpl<TypeId::kString>(const Literal& literal,
+                                                        int32_t width) {
+  const auto& str = std::get<std::string>(literal.value());
+  ICEBERG_ASSIGN_OR_RAISE(std::string truncated,
+                          TruncateUtils::TruncateUTF8Max(str, width));
+  return Literal::String(std::move(truncated));
+}
+
+template <>
+Result<Literal> TruncateLiteralMaxImpl<TypeId::kBinary>(const Literal& literal,
+                                                        int32_t width) {
+  const auto& data = std::get<std::vector<uint8_t>>(literal.value());
+  if (static_cast<int32_t>(data.size()) <= width) {
+    return literal;
+  }
+
+  std::vector<uint8_t> truncated(data.begin(), data.begin() + width);
+  for (auto it = truncated.rbegin(); it != truncated.rend(); ++it) {
+    if (*it < 0xFF) {
+      ++(*it);
+      truncated.resize(truncated.size() - std::distance(truncated.rbegin(), it));
+      return Literal::Binary(std::move(truncated));
+    }
+  }
+  return InvalidArgument("Cannot truncate upper bound for binary: all bytes are 0xFF");
+}
+
 }  // namespace
+
+Result<std::string> TruncateUtils::TruncateUTF8Max(const std::string& source, size_t L) {
+  std::string truncated = TruncateUTF8(source, L);
+  if (truncated == source) {
+    return truncated;
+  }
+
+  // Try incrementing code points from the end
+  size_t last_cp_start = truncated.size();
+  while (last_cp_start > 0) {
+    size_t cp_start = last_cp_start;
+    // Find the start of the previous code point
+    do {
+      --cp_start;
+    } while (cp_start > 0 && (static_cast<uint8_t>(truncated[cp_start]) & 0xC0) == 0x80);
+
+    auto code_point_opt = DecodeUtf8CodePoint(
+        std::string_view(truncated.data() + cp_start, last_cp_start - cp_start));
+    if (!code_point_opt.has_value()) {
+      return InvalidArgument("Invalid UTF-8 in string literal");
+    }
+    uint32_t code_point = code_point_opt.value();
+
+    // Try to increment the code point
+    if (code_point < kUtf8MaxCodePoint) {
+      uint32_t next_code_point = code_point + 1;
+      // Skip surrogate range
+      if (next_code_point >= kUtf8MinSurrogate && next_code_point <= kUtf8MaxSurrogate) {
+        next_code_point = kUtf8MaxSurrogate + 1;
+      }
+      if (next_code_point <= kUtf8MaxCodePoint) {
+        truncated.resize(cp_start);
+        AppendUtf8CodePoint(next_code_point, truncated);
+        return truncated;
+      }
+    }
+    last_cp_start = cp_start;
+  }
+  return InvalidArgument(
+      "Cannot truncate upper bound for string: all code points are 0x10FFFF");
+}
 
 Decimal TruncateUtils::TruncateDecimal(const Decimal& decimal, int32_t width) {
   return decimal - (((decimal % width) + width) % width);
@@ -100,6 +266,29 @@ Result<Literal> TruncateUtils::TruncateLiteral(const Literal& literal, int32_t w
     DISPATCH_TRUNCATE_LITERAL(TypeId::kBinary)
     default:
       return NotSupported("Truncate is not supported for type: {}",
+                          literal.type()->ToString());
+  }
+}
+
+#define DISPATCH_TRUNCATE_LITERAL_MAX(TYPE_ID) \
+  case TYPE_ID:                                \
+    return TruncateLiteralMaxImpl<TYPE_ID>(literal, width);
+
+Result<Literal> TruncateUtils::TruncateLiteralMax(const Literal& literal, int32_t width) {
+  if (literal.IsNull()) [[unlikely]] {
+    // Return null as is
+    return literal;
+  }
+
+  if (literal.IsAboveMax() || literal.IsBelowMin()) [[unlikely]] {
+    return NotSupported("Cannot truncate {}", literal.ToString());
+  }
+
+  switch (literal.type()->type_id()) {
+    DISPATCH_TRUNCATE_LITERAL_MAX(TypeId::kString);
+    DISPATCH_TRUNCATE_LITERAL_MAX(TypeId::kBinary);
+    default:
+      return NotSupported("Truncate max is not supported for type: {}",
                           literal.type()->ToString());
   }
 }
