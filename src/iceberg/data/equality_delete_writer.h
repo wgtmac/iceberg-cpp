@@ -50,12 +50,17 @@ struct ICEBERG_EXPORT EqualityDeleteWriterOptions {
   std::vector<int32_t> equality_field_ids;
   std::optional<int32_t> sort_order_id;
   std::unordered_map<std::string, std::string> properties;
+  // TODO(anyone): add key_metadata for encryption
 };
 
 /// \brief Writer for Iceberg equality delete files.
 class ICEBERG_EXPORT EqualityDeleteWriter : public FileWriter {
  public:
   ~EqualityDeleteWriter() override;
+
+  /// \brief Create a new EqualityDeleteWriter instance.
+  static Result<std::unique_ptr<EqualityDeleteWriter>> Make(
+      const EqualityDeleteWriterOptions& options);
 
   Status Write(ArrowArray* data) override;
   Result<int64_t> Length() const override;
@@ -67,6 +72,8 @@ class ICEBERG_EXPORT EqualityDeleteWriter : public FileWriter {
  private:
   class Impl;
   std::unique_ptr<Impl> impl_;
+
+  explicit EqualityDeleteWriter(std::unique_ptr<Impl> impl);
 };
 
 }  // namespace iceberg
