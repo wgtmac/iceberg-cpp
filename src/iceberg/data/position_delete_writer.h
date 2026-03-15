@@ -46,7 +46,7 @@ struct ICEBERG_EXPORT PositionDeleteWriterOptions {
   PartitionValues partition;
   FileFormatType format = FileFormatType::kParquet;
   std::shared_ptr<FileIO> io;
-  std::shared_ptr<Schema> row_schema;  // Optional row data schema
+  int64_t flush_threshold = 1000;  // Number of buffered deletes before auto-flush
   std::unordered_map<std::string, std::string> properties;
 };
 
@@ -54,6 +54,10 @@ struct ICEBERG_EXPORT PositionDeleteWriterOptions {
 class ICEBERG_EXPORT PositionDeleteWriter : public FileWriter {
  public:
   ~PositionDeleteWriter() override;
+
+  /// \brief Create a new PositionDeleteWriter instance.
+  static Result<std::unique_ptr<PositionDeleteWriter>> Make(
+      const PositionDeleteWriterOptions& options);
 
   Status Write(ArrowArray* data) override;
   Status WriteDelete(std::string_view file_path, int64_t pos);
@@ -64,6 +68,8 @@ class ICEBERG_EXPORT PositionDeleteWriter : public FileWriter {
  private:
   class Impl;
   std::unique_ptr<Impl> impl_;
+
+  explicit PositionDeleteWriter(std::unique_ptr<Impl> impl);
 };
 
 }  // namespace iceberg
