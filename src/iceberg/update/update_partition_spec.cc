@@ -37,15 +37,13 @@
 namespace iceberg {
 
 Result<std::shared_ptr<UpdatePartitionSpec>> UpdatePartitionSpec::Make(
-    std::shared_ptr<Transaction> transaction) {
-  ICEBERG_PRECHECK(transaction != nullptr,
-                   "Cannot create UpdatePartitionSpec without transaction");
-  return std::shared_ptr<UpdatePartitionSpec>(
-      new UpdatePartitionSpec(std::move(transaction)));
+    std::shared_ptr<TransactionContext> ctx) {
+  ICEBERG_PRECHECK(ctx != nullptr, "Cannot create UpdatePartitionSpec without context");
+  return std::shared_ptr<UpdatePartitionSpec>(new UpdatePartitionSpec(std::move(ctx)));
 }
 
-UpdatePartitionSpec::UpdatePartitionSpec(std::shared_ptr<Transaction> transaction)
-    : PendingUpdate(std::move(transaction)) {
+UpdatePartitionSpec::UpdatePartitionSpec(std::shared_ptr<TransactionContext> ctx)
+    : PendingUpdate(std::move(ctx)) {
   format_version_ = base().format_version;
 
   // Get the current/default partition spec

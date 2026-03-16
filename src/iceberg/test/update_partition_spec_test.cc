@@ -232,14 +232,12 @@ class UpdatePartitionSpecTest : public ::testing::TestWithParam<int8_t> {
   // Helper to create UpdatePartitionSpec from a table
   std::shared_ptr<UpdatePartitionSpec> CreateUpdateFromTable(
       std::shared_ptr<Table> table) {
-    auto transaction_result =
-        Transaction::Make(table, Transaction::Kind::kUpdate, /*auto_commit=*/false);
-    if (!transaction_result.has_value()) {
-      ADD_FAILURE() << "Failed to create transaction: "
-                    << transaction_result.error().message;
+    auto ctx_result = TransactionContext::Make(table, TransactionKind::kUpdate);
+    if (!ctx_result.has_value()) {
+      ADD_FAILURE() << "Failed to create context: " << ctx_result.error().message;
       return nullptr;
     }
-    auto update_result = UpdatePartitionSpec::Make(transaction_result.value());
+    auto update_result = UpdatePartitionSpec::Make(std::move(ctx_result.value()));
     if (!update_result.has_value()) {
       ADD_FAILURE() << "Failed to create UpdatePartitionSpec: "
                     << update_result.error().message;

@@ -34,14 +34,13 @@
 namespace iceberg {
 
 Result<std::shared_ptr<UpdateProperties>> UpdateProperties::Make(
-    std::shared_ptr<Transaction> transaction) {
-  ICEBERG_PRECHECK(transaction != nullptr,
-                   "Cannot create UpdateProperties without a transaction");
-  return std::shared_ptr<UpdateProperties>(new UpdateProperties(std::move(transaction)));
+    std::shared_ptr<TransactionContext> ctx) {
+  ICEBERG_PRECHECK(ctx != nullptr, "Cannot create UpdateProperties without a context");
+  return std::shared_ptr<UpdateProperties>(new UpdateProperties(std::move(ctx)));
 }
 
-UpdateProperties::UpdateProperties(std::shared_ptr<Transaction> transaction)
-    : PendingUpdate(std::move(transaction)) {}
+UpdateProperties::UpdateProperties(std::shared_ptr<TransactionContext> ctx)
+    : PendingUpdate(std::move(ctx)) {}
 
 UpdateProperties::~UpdateProperties() = default;
 

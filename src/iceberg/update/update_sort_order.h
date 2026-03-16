@@ -37,7 +37,7 @@ namespace iceberg {
 class ICEBERG_EXPORT UpdateSortOrder : public PendingUpdate {
  public:
   static Result<std::shared_ptr<UpdateSortOrder>> Make(
-      std::shared_ptr<Transaction> transaction);
+      std::shared_ptr<TransactionContext> ctx);
 
   ~UpdateSortOrder() override;
 
@@ -71,7 +71,7 @@ class ICEBERG_EXPORT UpdateSortOrder : public PendingUpdate {
   Result<std::shared_ptr<SortOrder>> Apply();
 
  private:
-  explicit UpdateSortOrder(std::shared_ptr<Transaction> transaction);
+  explicit UpdateSortOrder(std::shared_ptr<TransactionContext> ctx);
 
   std::vector<SortField> sort_fields_;
   bool case_sensitive_ = true;

@@ -48,7 +48,7 @@ namespace iceberg {
 class ICEBERG_EXPORT UpdateSchema : public PendingUpdate {
  public:
   static Result<std::shared_ptr<UpdateSchema>> Make(
-      std::shared_ptr<Transaction> transaction);
+      std::shared_ptr<TransactionContext> ctx);
 
   ~UpdateSchema() override;
 
@@ -348,7 +348,7 @@ class ICEBERG_EXPORT UpdateSchema : public PendingUpdate {
   Result<ApplyResult> Apply();
 
  private:
-  explicit UpdateSchema(std::shared_ptr<Transaction> transaction);
+  explicit UpdateSchema(std::shared_ptr<TransactionContext> ctx);
 
   /// \brief Internal implementation for adding a column with full control.
   ///

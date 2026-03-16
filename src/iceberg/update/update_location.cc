@@ -30,14 +30,13 @@
 namespace iceberg {
 
 Result<std::shared_ptr<UpdateLocation>> UpdateLocation::Make(
-    std::shared_ptr<Transaction> transaction) {
-  ICEBERG_PRECHECK(transaction != nullptr,
-                   "Cannot create UpdateLocation without a transaction");
-  return std::shared_ptr<UpdateLocation>(new UpdateLocation(std::move(transaction)));
+    std::shared_ptr<TransactionContext> ctx) {
+  ICEBERG_PRECHECK(ctx != nullptr, "Cannot create UpdateLocation without a context");
+  return std::shared_ptr<UpdateLocation>(new UpdateLocation(std::move(ctx)));
 }
 
-UpdateLocation::UpdateLocation(std::shared_ptr<Transaction> transaction)
-    : PendingUpdate(std::move(transaction)) {}
+UpdateLocation::UpdateLocation(std::shared_ptr<TransactionContext> ctx)
+    : PendingUpdate(std::move(ctx)) {}
 
 UpdateLocation::~UpdateLocation() = default;
 

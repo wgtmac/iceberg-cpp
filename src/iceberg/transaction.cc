@@ -19,6 +19,7 @@
  */
 #include "iceberg/transaction.h"
 
+#include <format>
 #include <memory>
 #include <optional>
 
@@ -52,50 +53,85 @@
 
 namespace iceberg {
 
-Transaction::Transaction(std::shared_ptr<Table> table, Kind kind, bool auto_commit,
-                         std::unique_ptr<TableMetadataBuilder> metadata_builder)
-    : table_(std::move(table)),
-      kind_(kind),
-      auto_commit_(auto_commit),
-      metadata_builder_(std::move(metadata_builder)) {}
+// ---------------------------------------------------------------------------
+// TransactionContext
+// ---------------------------------------------------------------------------
+
+TransactionContext::TransactionContext() = default;
+TransactionContext::~TransactionContext() = default;
+
+Result<std::shared_ptr<TransactionContext>> TransactionContext::Make(
+    std::shared_ptr<Table> table, TransactionKind kind) {
+  ICEBERG_PRECHECK(table != nullptr, "Table cannot be null");
+  auto ctx = std::make_shared<TransactionContext>();
+  ctx->kind = kind;
+  ctx->table = std::move(table);
+  if (kind == TransactionKind::kCreate) {
+    ctx->metadata_builder = TableMetadataBuilder::BuildFromEmpty();
+    std::ignore = ctx->metadata_builder->ApplyChangesForCreate(*ctx->table->metadata());
+  } else {
+    ctx->metadata_builder = TableMetadataBuilder::BuildFrom(ctx->table->metadata().get());
+  }
+  return ctx;
+}
+
+const TableMetadata* TransactionContext::base() const { return metadata_builder->base(); }
+
+const TableMetadata& TransactionContext::current() const {
+  return metadata_builder->current();
+}
+
+std::string TransactionContext::MetadataFileLocation(std::string_view filename) const {
+  const auto metadata_location =
+      current().properties.Get(TableProperties::kWriteMetadataLocation);
+  if (metadata_location.empty()) {
+    return std::format("{}/metadata/{}", current().location, filename);
+  }
+  return std::format("{}/{}", LocationUtil::StripTrailingSlash(metadata_location),
+                     filename);
+}
+
+// ---------------------------------------------------------------------------
+// Transaction
+// ---------------------------------------------------------------------------
+
+Transaction::Transaction(std::shared_ptr<TransactionContext> ctx)
+    : ctx_(std::move(ctx)) {}
 
 Transaction::~Transaction() = default;
 
 Result<std::shared_ptr<Transaction>> Transaction::Make(std::shared_ptr<Table> table,
-                                                       Kind kind, bool auto_commit) {
+                                                       TransactionKind kind) {
   ICEBERG_PRECHECK(table && table->catalog(), "Table and catalog cannot be null");
-
-  std::unique_ptr<TableMetadataBuilder> metadata_builder;
-  if (kind == Kind::kCreate) {
-    metadata_builder = TableMetadataBuilder::BuildFromEmpty();
-    std::ignore = metadata_builder->ApplyChangesForCreate(*table->metadata());
-  } else {
-    metadata_builder = TableMetadataBuilder::BuildFrom(table->metadata().get());
-  }
-
-  return std::shared_ptr<Transaction>(
-      new Transaction(std::move(table), kind, auto_commit, std::move(metadata_builder)));
+  ICEBERG_ASSIGN_OR_RAISE(auto ctx, TransactionContext::Make(std::move(table), kind));
+  auto txn = std::shared_ptr<Transaction>(new Transaction(ctx));
+  ctx->transaction = std::weak_ptr<Transaction>(txn);
+  return txn;
 }
 
-const TableMetadata* Transaction::base() const { return metadata_builder_->base(); }
+Result<std::shared_ptr<Transaction>> Transaction::Make(
+    std::shared_ptr<TransactionContext> ctx) {
+  ICEBERG_PRECHECK(ctx != nullptr, "TransactionContext cannot be null");
+  auto txn = std::shared_ptr<Transaction>(new Transaction(ctx));
+  ctx->transaction = std::weak_ptr<Transaction>(txn);
+  return txn;
+}
 
-const TableMetadata& Transaction::current() const { return metadata_builder_->current(); }
+const std::shared_ptr<Table>& Transaction::table() const { return ctx_->table; }
+
+const TableMetadata* Transaction::base() const { return ctx_->base(); }
+
+const TableMetadata& Transaction::current() const { return ctx_->current(); }
 
 std::string Transaction::MetadataFileLocation(std::string_view filename) const {
-  const auto metadata_location =
-      current().properties.Get(TableProperties::kWriteMetadataLocation);
-  if (metadata_location.empty()) {
-    return std::format("{}/{}", LocationUtil::StripTrailingSlash(metadata_location),
-                       filename);
-  }
-  return std::format("{}/metadata/{}", current().location, filename);
+  return ctx_->MetadataFileLocation(filename);
 }
 
 Status Transaction::AddUpdate(const std::shared_ptr<PendingUpdate>& update) {
   ICEBERG_CHECK(last_update_committed_,
                 "Cannot add update when previous update is not committed");
 
-  pending_updates_.emplace_back(std::weak_ptr<PendingUpdate>(update));
+  pending_updates_.push_back(update);
   last_update_committed_ = false;
   return {};
 }
@@ -153,52 +189,48 @@ Status Transaction::Apply(PendingUpdate& update) {
 
   last_update_committed_ = true;
 
-  if (auto_commit_) {
-    ICEBERG_RETURN_UNEXPECTED(Commit());
-  }
-
   return {};
 }
 
 Status Transaction::ApplyExpireSnapshots(ExpireSnapshots& update) {
   ICEBERG_ASSIGN_OR_RAISE(auto result, update.Apply());
   if (!result.snapshot_ids_to_remove.empty()) {
-    metadata_builder_->RemoveSnapshots(std::move(result.snapshot_ids_to_remove));
+    ctx_->metadata_builder->RemoveSnapshots(std::move(result.snapshot_ids_to_remove));
   }
   if (!result.refs_to_remove.empty()) {
     for (const auto& ref_name : result.refs_to_remove) {
-      metadata_builder_->RemoveRef(ref_name);
+      ctx_->metadata_builder->RemoveRef(ref_name);
     }
   }
   if (!result.partition_spec_ids_to_remove.empty()) {
-    metadata_builder_->RemovePartitionSpecs(
+    ctx_->metadata_builder->RemovePartitionSpecs(
         std::move(result.partition_spec_ids_to_remove));
   }
   if (!result.schema_ids_to_remove.empty()) {
-    metadata_builder_->RemoveSchemas(std::move(result.schema_ids_to_remove));
+    ctx_->metadata_builder->RemoveSchemas(std::move(result.schema_ids_to_remove));
   }
   return {};
 }
 
 Status Transaction::ApplySetSnapshot(SetSnapshot& update) {
   ICEBERG_ASSIGN_OR_RAISE(auto snapshot_id, update.Apply());
-  metadata_builder_->SetBranchSnapshot(snapshot_id,
-                                       std::string(SnapshotRef::kMainBranch));
+  ctx_->metadata_builder->SetBranchSnapshot(snapshot_id,
+                                            std::string(SnapshotRef::kMainBranch));
   return {};
 }
 
 Status Transaction::ApplyUpdateLocation(UpdateLocation& update) {
   ICEBERG_ASSIGN_OR_RAISE(auto location, update.Apply());
-  metadata_builder_->SetLocation(location);
+  ctx_->metadata_builder->SetLocation(location);
   return {};
 }
 
 Status Transaction::ApplyUpdatePartitionSpec(UpdatePartitionSpec& update) {
   ICEBERG_ASSIGN_OR_RAISE(auto result, update.Apply());
   if (result.set_as_default) {
-    metadata_builder_->SetDefaultPartitionSpec(std::move(result.spec));
+    ctx_->metadata_builder->SetDefaultPartitionSpec(std::move(result.spec));
   } else {
-    metadata_builder_->AddPartitionSpec(std::move(result.spec));
+    ctx_->metadata_builder->AddPartitionSpec(std::move(result.spec));
   }
   return {};
 }
@@ -206,30 +238,30 @@ Status Transaction::ApplyUpdatePartitionSpec(UpdatePartitionSpec& update) {
 Status Transaction::ApplyUpdateProperties(UpdateProperties& update) {
   ICEBERG_ASSIGN_OR_RAISE(auto result, update.Apply());
   if (!result.updates.empty()) {
-    metadata_builder_->SetProperties(std::move(result.updates));
+    ctx_->metadata_builder->SetProperties(std::move(result.updates));
   }
   if (!result.removals.empty()) {
-    metadata_builder_->RemoveProperties(std::move(result.removals));
+    ctx_->metadata_builder->RemoveProperties(std::move(result.removals));
   }
   if (result.format_version.has_value()) {
-    metadata_builder_->UpgradeFormatVersion(result.format_version.value());
+    ctx_->metadata_builder->UpgradeFormatVersion(result.format_version.value());
   }
   return {};
 }
 
 Status Transaction::ApplyUpdateSchema(UpdateSchema& update) {
   ICEBERG_ASSIGN_OR_RAISE(auto result, update.Apply());
-  metadata_builder_->SetCurrentSchema(std::move(result.schema),
-                                      result.new_last_column_id);
+  ctx_->metadata_builder->SetCurrentSchema(std::move(result.schema),
+                                           result.new_last_column_id);
   if (!result.updated_props.empty()) {
-    metadata_builder_->SetProperties(result.updated_props);
+    ctx_->metadata_builder->SetProperties(result.updated_props);
   }
 
   return {};
 }
 
 Status Transaction::ApplyUpdateSnapshot(SnapshotUpdate& update) {
-  const auto& base = metadata_builder_->current();
+  const auto& base = ctx_->metadata_builder->current();
 
   ICEBERG_ASSIGN_OR_RAISE(auto result, update.Apply());
 
@@ -252,14 +284,14 @@ Status Transaction::ApplyUpdateSnapshot(SnapshotUpdate& update) {
   }
 
   for (const auto& change : temp_update->changes()) {
-    change->ApplyTo(*metadata_builder_);
+    change->ApplyTo(*ctx_->metadata_builder);
   }
 
   // If the table UUID is missing, add it here. the UUID will be re-created each time
   // this operation retries to ensure that if a concurrent operation assigns the UUID,
   // this operation will not fail.
   if (base.table_uuid.empty()) {
-    metadata_builder_->AssignUUID();
+    ctx_->metadata_builder->AssignUUID();
   }
   return {};
 }
@@ -267,27 +299,27 @@ Status Transaction::ApplyUpdateSnapshot(SnapshotUpdate& update) {
 Status Transaction::ApplyUpdateSnapshotReference(UpdateSnapshotReference& update) {
   ICEBERG_ASSIGN_OR_RAISE(auto result, update.Apply());
   for (const auto& name : result.to_remove) {
-    metadata_builder_->RemoveRef(name);
+    ctx_->metadata_builder->RemoveRef(name);
   }
   for (auto&& [name, ref] : result.to_set) {
-    metadata_builder_->SetRef(std::move(name), std::move(ref));
+    ctx_->metadata_builder->SetRef(std::move(name), std::move(ref));
   }
   return {};
 }
 
 Status Transaction::ApplyUpdateSortOrder(UpdateSortOrder& update) {
   ICEBERG_ASSIGN_OR_RAISE(auto sort_order, update.Apply());
-  metadata_builder_->SetDefaultSortOrder(std::move(sort_order));
+  ctx_->metadata_builder->SetDefaultSortOrder(std::move(sort_order));
   return {};
 }
 
 Status Transaction::ApplyUpdateStatistics(UpdateStatistics& update) {
   ICEBERG_ASSIGN_OR_RAISE(auto result, update.Apply());
   for (auto&& [_, stat_file] : result.to_set) {
-    metadata_builder_->SetStatistics(std::move(stat_file));
+    ctx_->metadata_builder->SetStatistics(std::move(stat_file));
   }
   for (const auto& snapshot_id : result.to_remove) {
-    metadata_builder_->RemoveStatistics(snapshot_id);
+    ctx_->metadata_builder->RemoveStatistics(snapshot_id);
   }
   return {};
 }
@@ -295,10 +327,10 @@ Status Transaction::ApplyUpdateStatistics(UpdateStatistics& update) {
 Status Transaction::ApplyUpdatePartitionStatistics(UpdatePartitionStatistics& update) {
   ICEBERG_ASSIGN_OR_RAISE(auto result, update.Apply());
   for (auto&& [_, partition_stat_file] : result.to_set) {
-    metadata_builder_->SetPartitionStatistics(std::move(partition_stat_file));
+    ctx_->metadata_builder->SetPartitionStatistics(std::move(partition_stat_file));
   }
   for (const auto& snapshot_id : result.to_remove) {
-    metadata_builder_->RemovePartitionStatistics(snapshot_id);
+    ctx_->metadata_builder->RemovePartitionStatistics(snapshot_id);
   }
   return {};
 }
@@ -308,104 +340,103 @@ Result<std::shared_ptr<Table>> Transaction::Commit() {
   ICEBERG_CHECK(last_update_committed_,
                 "Cannot commit transaction when previous update is not committed");
 
-  const auto& updates = metadata_builder_->changes();
+  const auto& updates = ctx_->metadata_builder->changes();
   if (updates.empty()) {
     committed_ = true;
-    return table_;
+    return ctx_->table;
   }
 
   std::vector<std::unique_ptr<TableRequirement>> requirements;
-  switch (kind_) {
-    case Kind::kCreate: {
+  switch (ctx_->kind) {
+    case TransactionKind::kCreate: {
       ICEBERG_ASSIGN_OR_RAISE(requirements, TableRequirements::ForCreateTable(updates));
     } break;
-    case Kind::kUpdate: {
-      ICEBERG_ASSIGN_OR_RAISE(requirements, TableRequirements::ForUpdateTable(
-                                                *metadata_builder_->base(), updates));
+    case TransactionKind::kUpdate: {
+      ICEBERG_ASSIGN_OR_RAISE(
+          requirements,
+          TableRequirements::ForUpdateTable(*ctx_->metadata_builder->base(), updates));
 
     } break;
   }
 
   // XXX: we should handle commit failure and retry here.
   auto commit_result =
-      table_->catalog()->UpdateTable(table_->name(), requirements, updates);
+      ctx_->table->catalog()->UpdateTable(ctx_->table->name(), requirements, updates);
 
   for (const auto& update : pending_updates_) {
-    if (auto update_ptr = update.lock()) {
-      std::ignore = update_ptr->Finalize(commit_result.has_value()
-                                             ? std::nullopt
-                                             : std::make_optional(commit_result.error()));
-    }
+    std::ignore = update->Finalize(commit_result.has_value()
+                                       ? std::nullopt
+                                       : std::make_optional(commit_result.error()));
   }
 
   ICEBERG_RETURN_UNEXPECTED(commit_result);
 
   // Mark as committed and update table reference
   committed_ = true;
-  table_ = std::move(commit_result.value());
+  ctx_->table = std::move(commit_result.value());
 
-  return table_;
+  return ctx_->table;
 }
 
 Result<std::shared_ptr<UpdatePartitionSpec>> Transaction::NewUpdatePartitionSpec() {
   ICEBERG_ASSIGN_OR_RAISE(std::shared_ptr<UpdatePartitionSpec> update_spec,
-                          UpdatePartitionSpec::Make(shared_from_this()));
+                          UpdatePartitionSpec::Make(ctx_));
   ICEBERG_RETURN_UNEXPECTED(AddUpdate(update_spec));
   return update_spec;
 }
 
 Result<std::shared_ptr<UpdateProperties>> Transaction::NewUpdateProperties() {
   ICEBERG_ASSIGN_OR_RAISE(std::shared_ptr<UpdateProperties> update_properties,
-                          UpdateProperties::Make(shared_from_this()));
+                          UpdateProperties::Make(ctx_));
   ICEBERG_RETURN_UNEXPECTED(AddUpdate(update_properties));
   return update_properties;
 }
 
 Result<std::shared_ptr<UpdateSortOrder>> Transaction::NewUpdateSortOrder() {
   ICEBERG_ASSIGN_OR_RAISE(std::shared_ptr<UpdateSortOrder> update_sort_order,
-                          UpdateSortOrder::Make(shared_from_this()));
+                          UpdateSortOrder::Make(ctx_));
   ICEBERG_RETURN_UNEXPECTED(AddUpdate(update_sort_order));
   return update_sort_order;
 }
 
 Result<std::shared_ptr<UpdateSchema>> Transaction::NewUpdateSchema() {
   ICEBERG_ASSIGN_OR_RAISE(std::shared_ptr<UpdateSchema> update_schema,
-                          UpdateSchema::Make(shared_from_this()));
+                          UpdateSchema::Make(ctx_));
   ICEBERG_RETURN_UNEXPECTED(AddUpdate(update_schema));
   return update_schema;
 }
 
 Result<std::shared_ptr<ExpireSnapshots>> Transaction::NewExpireSnapshots() {
   ICEBERG_ASSIGN_OR_RAISE(std::shared_ptr<ExpireSnapshots> expire_snapshots,
-                          ExpireSnapshots::Make(shared_from_this()));
+                          ExpireSnapshots::Make(ctx_));
   ICEBERG_RETURN_UNEXPECTED(AddUpdate(expire_snapshots));
   return expire_snapshots;
 }
 
 Result<std::shared_ptr<UpdateLocation>> Transaction::NewUpdateLocation() {
   ICEBERG_ASSIGN_OR_RAISE(std::shared_ptr<UpdateLocation> update_location,
-                          UpdateLocation::Make(shared_from_this()));
+                          UpdateLocation::Make(ctx_));
   ICEBERG_RETURN_UNEXPECTED(AddUpdate(update_location));
   return update_location;
 }
 
 Result<std::shared_ptr<SetSnapshot>> Transaction::NewSetSnapshot() {
   ICEBERG_ASSIGN_OR_RAISE(std::shared_ptr<SetSnapshot> set_snapshot,
-                          SetSnapshot::Make(shared_from_this()));
+                          SetSnapshot::Make(ctx_));
   ICEBERG_RETURN_UNEXPECTED(AddUpdate(set_snapshot));
   return set_snapshot;
 }
 
 Result<std::shared_ptr<FastAppend>> Transaction::NewFastAppend() {
   ICEBERG_ASSIGN_OR_RAISE(std::shared_ptr<FastAppend> fast_append,
-                          FastAppend::Make(table_->name().name, shared_from_this()));
+                          FastAppend::Make(ctx_->table->name().name, ctx_));
   ICEBERG_RETURN_UNEXPECTED(AddUpdate(fast_append));
   return fast_append;
 }
 
 Result<std::shared_ptr<UpdateStatistics>> Transaction::NewUpdateStatistics() {
   ICEBERG_ASSIGN_OR_RAISE(std::shared_ptr<UpdateStatistics> update_statistics,
-                          UpdateStatistics::Make(shared_from_this()));
+                          UpdateStatistics::Make(ctx_));
   ICEBERG_RETURN_UNEXPECTED(AddUpdate(update_statistics));
   return update_statistics;
 }
@@ -414,7 +445,7 @@ Result<std::shared_ptr<UpdatePartitionStatistics>>
 Transaction::NewUpdatePartitionStatistics() {
   ICEBERG_ASSIGN_OR_RAISE(
       std::shared_ptr<UpdatePartitionStatistics> update_partition_statistics,
-      UpdatePartitionStatistics::Make(shared_from_this()));
+      UpdatePartitionStatistics::Make(ctx_));
   ICEBERG_RETURN_UNEXPECTED(AddUpdate(update_partition_statistics));
   return update_partition_statistics;
 }
@@ -422,7 +453,7 @@ Transaction::NewUpdatePartitionStatistics() {
 Result<std::shared_ptr<UpdateSnapshotReference>>
 Transaction::NewUpdateSnapshotReference() {
   ICEBERG_ASSIGN_OR_RAISE(std::shared_ptr<UpdateSnapshotReference> update_ref,
-                          UpdateSnapshotReference::Make(shared_from_this()));
+                          UpdateSnapshotReference::Make(ctx_));
   ICEBERG_RETURN_UNEXPECTED(AddUpdate(update_ref));
   return update_ref;
 }

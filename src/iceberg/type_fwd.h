@@ -203,6 +203,7 @@ class TableUpdate;
 class TableRequirement;
 class TableUpdateContext;
 class Transaction;
+class TransactionContext;
 
 /// \brief Update family.
 class ExpireSnapshots;

@@ -37,7 +37,7 @@ namespace iceberg {
 class ICEBERG_EXPORT SetSnapshot : public PendingUpdate {
  public:
   static Result<std::shared_ptr<SetSnapshot>> Make(
-      std::shared_ptr<Transaction> transaction);
+      std::shared_ptr<TransactionContext> ctx);
 
   ~SetSnapshot() override;
 
@@ -56,7 +56,7 @@ class ICEBERG_EXPORT SetSnapshot : public PendingUpdate {
   Result<int64_t> Apply();
 
  private:
-  explicit SetSnapshot(std::shared_ptr<Transaction> transaction);
+  explicit SetSnapshot(std::shared_ptr<TransactionContext> ctx);
 
   /// \brief Find the latest snapshot whose timestamp is before the provided timestamp.
   ///

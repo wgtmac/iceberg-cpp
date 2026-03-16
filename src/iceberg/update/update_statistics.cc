@@ -32,14 +32,13 @@
 namespace iceberg {
 
 Result<std::shared_ptr<UpdateStatistics>> UpdateStatistics::Make(
-    std::shared_ptr<Transaction> transaction) {
-  ICEBERG_PRECHECK(transaction != nullptr,
-                   "Cannot create UpdateStatistics without a transaction");
-  return std::shared_ptr<UpdateStatistics>(new UpdateStatistics(std::move(transaction)));
+    std::shared_ptr<TransactionContext> ctx) {
+  ICEBERG_PRECHECK(ctx != nullptr, "Cannot create UpdateStatistics without a context");
+  return std::shared_ptr<UpdateStatistics>(new UpdateStatistics(std::move(ctx)));
 }
 
-UpdateStatistics::UpdateStatistics(std::shared_ptr<Transaction> transaction)
-    : PendingUpdate(std::move(transaction)) {}
+UpdateStatistics::UpdateStatistics(std::shared_ptr<TransactionContext> ctx)
+    : PendingUpdate(std::move(ctx)) {}
 
 UpdateStatistics::~UpdateStatistics() = default;
 

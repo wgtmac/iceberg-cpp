@@ -154,8 +154,8 @@ Result<ManifestFile> AddMetadata(const ManifestFile& manifest, std::shared_ptr<F
 
 SnapshotUpdate::~SnapshotUpdate() = default;
 
-SnapshotUpdate::SnapshotUpdate(std::shared_ptr<Transaction> transaction)
-    : PendingUpdate(std::move(transaction)),
+SnapshotUpdate::SnapshotUpdate(std::shared_ptr<TransactionContext> ctx)
+    : PendingUpdate(std::move(ctx)),
       can_inherit_snapshot_id_(
           base().format_version > 1 ||
           base().properties.Get(TableProperties::kSnapshotIdInheritanceEnabled)),
@@ -176,11 +176,10 @@ Result<std::vector<ManifestFile>> SnapshotUpdate::WriteDataManifests(
   RollingManifestWriter rolling_writer(
       [this, spec, schema = std::move(current_schema),
        snapshot_id = SnapshotId()]() -> Result<std::unique_ptr<ManifestWriter>> {
-        return ManifestWriter::MakeWriter(base().format_version, snapshot_id,
-                                          ManifestPath(), transaction_->table()->io(),
-                                          std::move(spec), std::move(schema),
-                                          ManifestContent::kData,
-                                          /*first_row_id=*/base().next_row_id);
+        return ManifestWriter::MakeWriter(
+            base().format_version, snapshot_id, ManifestPath(), ctx_->table->io(),
+            std::move(spec), std::move(schema), ManifestContent::kData,
+            /*first_row_id=*/base().next_row_id);
       },
       target_manifest_size_bytes_);
 
@@ -203,10 +202,9 @@ Result<std::vector<ManifestFile>> SnapshotUpdate::WriteDeleteManifests(
   RollingManifestWriter rolling_writer(
       [this, spec, schema = std::move(current_schema),
        snapshot_id = SnapshotId()]() -> Result<std::unique_ptr<ManifestWriter>> {
-        return ManifestWriter::MakeWriter(base().format_version, snapshot_id,
-                                          ManifestPath(), transaction_->table()->io(),
-                                          std::move(spec), std::move(schema),
-                                          ManifestContent::kDeletes);
+        return ManifestWriter::MakeWriter(
+            base().format_version, snapshot_id, ManifestPath(), ctx_->table->io(),
+            std::move(spec), std::move(schema), ManifestContent::kDeletes);
       },
       target_manifest_size_bytes_);
 
@@ -245,8 +243,7 @@ Result<SnapshotUpdate::ApplyResult> SnapshotUpdate::Apply() {
       continue;
     }
     // TODO(xxx): read in parallel and cache enriched manifests for retries
-    ICEBERG_ASSIGN_OR_RAISE(manifest,
-                            AddMetadata(manifest, transaction_->table()->io(), base()));
+    ICEBERG_ASSIGN_OR_RAISE(manifest, AddMetadata(manifest, ctx_->table->io(), base()));
   }
 
   std::string manifest_list_path = ManifestListPath();
@@ -254,8 +251,8 @@ Result<SnapshotUpdate::ApplyResult> SnapshotUpdate::Apply() {
   ICEBERG_ASSIGN_OR_RAISE(
       auto writer, ManifestListWriter::MakeWriter(base().format_version, SnapshotId(),
                                                   parent_snapshot_id, manifest_list_path,
-                                                  transaction_->table()->io(),
-                                                  sequence_number, base().next_row_id));
+                                                  ctx_->table->io(), sequence_number,
+                                                  base().next_row_id));
   ICEBERG_RETURN_UNEXPECTED(writer->AddAll(manifests));
   ICEBERG_RETURN_UNEXPECTED(writer->Close());
 
@@ -313,8 +310,7 @@ Status SnapshotUpdate::Finalize(std::optional<Error> commit_error) {
     ICEBERG_CHECK(staged_snapshot_ != nullptr,
                   "Staged snapshot is null during finalize after commit");
     auto cached_snapshot = SnapshotCache(staged_snapshot_.get());
-    ICEBERG_ASSIGN_OR_RAISE(auto manifests,
-                            cached_snapshot.Manifests(transaction_->table()->io()));
+    ICEBERG_ASSIGN_OR_RAISE(auto manifests, cached_snapshot.Manifests(ctx_->table->io()));
     CleanUncommitted(manifests | std::views::transform([](const auto& manifest) {
                        return manifest.manifest_path;
                      }) |
@@ -391,7 +387,7 @@ void SnapshotUpdate::CleanAll() {
 
 Status SnapshotUpdate::DeleteFile(const std::string& path) {
   static const auto kDefaultDeleteFunc = [this](const std::string& path) {
-    return this->transaction_->table()->io()->DeleteFile(path);
+    return this->ctx_->table->io()->DeleteFile(path);
   };
   if (delete_func_) {
     return delete_func_(path);
@@ -406,14 +402,14 @@ std::string SnapshotUpdate::ManifestListPath() {
   int64_t snapshot_id = SnapshotId();
   std::string filename =
       std::format("snap-{}-{}-{}.avro", snapshot_id, ++attempt_, commit_uuid_);
-  return transaction_->MetadataFileLocation(filename);
+  return ctx_->MetadataFileLocation(filename);
 }
 
 std::string SnapshotUpdate::ManifestPath() {
   // Generate manifest path
   // Format: {metadata_location}/{uuid}-m{manifest_count}.avro
   std::string filename = std::format("{}-m{}.avro", commit_uuid_, manifest_count_++);
-  return transaction_->MetadataFileLocation(filename);
+  return ctx_->MetadataFileLocation(filename);
 }
 
 }  // namespace iceberg

@@ -84,11 +84,11 @@ class ICEBERG_EXPORT PendingUpdate : public ErrorCollector {
   ~PendingUpdate() override;
 
  protected:
-  explicit PendingUpdate(std::shared_ptr<Transaction> transaction);
+  explicit PendingUpdate(std::shared_ptr<TransactionContext> ctx);
 
   const TableMetadata& base() const;
 
-  std::shared_ptr<Transaction> transaction_;
+  std::shared_ptr<TransactionContext> ctx_;
 };
 
 }  // namespace iceberg

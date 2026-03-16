@@ -121,7 +121,7 @@ class ICEBERG_EXPORT SnapshotUpdate : public PendingUpdate {
   Status Finalize(std::optional<Error> commit_error) override;
 
  protected:
-  explicit SnapshotUpdate(std::shared_ptr<Transaction> transaction);
+  explicit SnapshotUpdate(std::shared_ptr<TransactionContext> ctx);
 
   /// \brief Write data manifests for the given data files
   ///

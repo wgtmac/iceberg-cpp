@@ -500,8 +500,7 @@ Result<std::shared_ptr<Transaction>> InMemoryCatalog::StageCreateTable(
   ICEBERG_ASSIGN_OR_RAISE(
       auto table, StagedTable::Make(identifier, std::move(table_metadata), "", file_io_,
                                     shared_from_this()));
-  return Transaction::Make(std::move(table), Transaction::Kind::kCreate,
-                           /* auto_commit */ false);
+  return Transaction::Make(std::move(table), TransactionKind::kCreate);
 }
 
 Result<bool> InMemoryCatalog::TableExists(const TableIdentifier& identifier) const {
