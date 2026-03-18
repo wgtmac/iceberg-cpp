@@ -37,3 +37,13 @@ cmake-build-release/
 /subprojects/*
 !/subprojects/packagefiles
 !/subprojects/*.wrap
+
+# AI
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+.cursor/
+.gemini/
+.kiro/
+my-skills/
+skills/
