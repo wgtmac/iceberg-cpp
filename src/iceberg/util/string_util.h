@@ -28,6 +28,7 @@
 #include <type_traits>
 #include <typeinfo>
 #include <utility>
+#include <vector>
 
 #include "iceberg/iceberg_export.h"
 #include "iceberg/result.h"
@@ -78,6 +79,10 @@ class ICEBERG_EXPORT StringUtils {
     T value = 0;
     auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), value);
     if (ec == std::errc()) [[likely]] {
+      if (ptr != str.data() + str.size()) {
+        return InvalidArgument("Failed to parse {} from string '{}': trailing characters",
+                               typeid(T).name(), str);
+      }
       return value;
     }
     if (ec == std::errc::invalid_argument) {
@@ -90,6 +95,10 @@ class ICEBERG_EXPORT StringUtils {
     }
     std::unreachable();
   }
+
+  /// \brief Decode a hex string (upper or lower case) into bytes.
+  /// Returns an error if the string has odd length or contains invalid hex characters.
+  static Result<std::vector<uint8_t>> HexStringToBytes(std::string_view hex);
 
   template <typename T>
     requires std::is_floating_point_v<T> && (!FromChars<T>)
