@@ -275,10 +275,10 @@ function(resolve_nanoarrow_dependency)
                        ${FC_DECLARE_COMMON_OPTIONS}
                        URL ${NANOARROW_SOURCE_URL}
                        URL_HASH "SHA256=${ICEBERG_NANOARROW_BUILD_SHA256_CHECKSUM}"
-                           FIND_PACKAGE_ARGS
-                           NAMES
-                           nanoarrow
-                           CONFIG)
+                       FIND_PACKAGE_ARGS
+                       NAMES
+                       nanoarrow
+                       CONFIG)
   fetchcontent_makeavailable(nanoarrow)
 
   if(nanoarrow_SOURCE_DIR)
