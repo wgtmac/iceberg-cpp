@@ -48,6 +48,21 @@ else()
   set(ARROW_SOURCE_URL
       "https://www.apache.org/dyn/closer.lua?action=download&filename=/arrow/arrow-${ICEBERG_ARROW_BUILD_VERSION}/apache-arrow-${ICEBERG_ARROW_BUILD_VERSION}.tar.gz"
       "https://downloads.apache.org/arrow/arrow-${ICEBERG_ARROW_BUILD_VERSION}/apache-arrow-${ICEBERG_ARROW_BUILD_VERSION}.tar.gz"
+      "https://archive.apache.org/dist/arrow/arrow-${ICEBERG_ARROW_BUILD_VERSION}/apache-arrow-${ICEBERG_ARROW_BUILD_VERSION}.tar.gz"
+  )
+endif()
+
+set(ICEBERG_NANOARROW_BUILD_VERSION "0.8.0")
+set(ICEBERG_NANOARROW_BUILD_SHA256_CHECKSUM
+    "6e61e2819c9138e9092ba32b568ed6f4594928b306171937251eaaafa7dc2b8c")
+
+if(DEFINED ENV{ICEBERG_NANOARROW_URL})
+  set(NANOARROW_SOURCE_URL "$ENV{ICEBERG_NANOARROW_URL}")
+else()
+  set(NANOARROW_SOURCE_URL
+      "https://www.apache.org/dyn/closer.lua?action=download&filename=/arrow/apache-arrow-nanoarrow-${ICEBERG_NANOARROW_BUILD_VERSION}/apache-arrow-nanoarrow-${ICEBERG_NANOARROW_BUILD_VERSION}.tar.gz"
+      "https://downloads.apache.org/arrow/apache-arrow-nanoarrow-${ICEBERG_NANOARROW_BUILD_VERSION}/apache-arrow-nanoarrow-${ICEBERG_NANOARROW_BUILD_VERSION}.tar.gz"
+      "https://archive.apache.org/dist/arrow/apache-arrow-nanoarrow-${ICEBERG_NANOARROW_BUILD_VERSION}/apache-arrow-nanoarrow-${ICEBERG_NANOARROW_BUILD_VERSION}.tar.gz"
   )
 endif()
 
@@ -256,17 +271,10 @@ endfunction()
 function(resolve_nanoarrow_dependency)
   prepare_fetchcontent()
 
-  if(DEFINED ENV{ICEBERG_NANOARROW_URL})
-    set(NANOARROW_URL "$ENV{ICEBERG_NANOARROW_URL}")
-  else()
-    set(NANOARROW_URL
-        "https://dlcdn.apache.org/arrow/apache-arrow-nanoarrow-0.8.0/apache-arrow-nanoarrow-0.8.0.tar.gz"
-    )
-  endif()
-
   fetchcontent_declare(nanoarrow
                        ${FC_DECLARE_COMMON_OPTIONS}
-                       URL ${NANOARROW_URL}
+                       URL ${NANOARROW_SOURCE_URL}
+                       URL_HASH "SHA256=${ICEBERG_NANOARROW_BUILD_SHA256_CHECKSUM}"
                            FIND_PACKAGE_ARGS
                            NAMES
                            nanoarrow
