@@ -263,7 +263,44 @@ class ICEBERG_EXPORT SnapshotSummaryBuilder {
   class UpdateMetrics {
    public:
     void Clear();
-    void AddTo(std::unordered_map<std::string, std::string>& builder) const;
+    template <typename Sink>
+    void AddTo(Sink&& sink) const {
+      SetIf(added_files_ > 0, sink, SnapshotSummaryFields::kAddedDataFiles, added_files_);
+      SetIf(removed_files_ > 0, sink, SnapshotSummaryFields::kDeletedDataFiles,
+            removed_files_);
+      SetIf(added_eq_delete_files_ > 0, sink, SnapshotSummaryFields::kAddedEqDeleteFiles,
+            added_eq_delete_files_);
+      SetIf(removed_eq_delete_files_ > 0, sink,
+            SnapshotSummaryFields::kRemovedEqDeleteFiles, removed_eq_delete_files_);
+      SetIf(added_pos_delete_files_ > 0, sink, SnapshotSummaryFields::kAddedPosDeleteFiles,
+            added_pos_delete_files_);
+      SetIf(removed_pos_delete_files_ > 0, sink,
+            SnapshotSummaryFields::kRemovedPosDeleteFiles, removed_pos_delete_files_);
+      SetIf(added_delete_files_ > 0, sink, SnapshotSummaryFields::kAddedDeleteFiles,
+            added_delete_files_);
+      SetIf(removed_delete_files_ > 0, sink, SnapshotSummaryFields::kRemovedDeleteFiles,
+            removed_delete_files_);
+      SetIf(added_dvs_ > 0, sink, SnapshotSummaryFields::kAddedDVs, added_dvs_);
+      SetIf(removed_dvs_ > 0, sink, SnapshotSummaryFields::kRemovedDVs, removed_dvs_);
+      SetIf(added_records_ > 0, sink, SnapshotSummaryFields::kAddedRecords,
+            added_records_);
+      SetIf(deleted_records_ > 0, sink, SnapshotSummaryFields::kDeletedRecords,
+            deleted_records_);
+
+      if (trust_size_and_delete_counts_) {
+        SetIf(added_size_ > 0, sink, SnapshotSummaryFields::kAddedFileSize, added_size_);
+        SetIf(removed_size_ > 0, sink, SnapshotSummaryFields::kRemovedFileSize,
+              removed_size_);
+        SetIf(added_pos_deletes_ > 0, sink, SnapshotSummaryFields::kAddedPosDeletes,
+              added_pos_deletes_);
+        SetIf(removed_pos_deletes_ > 0, sink, SnapshotSummaryFields::kRemovedPosDeletes,
+              removed_pos_deletes_);
+        SetIf(added_eq_deletes_ > 0, sink, SnapshotSummaryFields::kAddedEqDeletes,
+              added_eq_deletes_);
+        SetIf(removed_eq_deletes_ > 0, sink, SnapshotSummaryFields::kRemovedEqDeletes,
+              removed_eq_deletes_);
+      }
+    }
     void AddedFile(const DataFile& file);
     void RemovedFile(const DataFile& file);
     void AddedManifest(const ManifestFile& manifest);
@@ -349,6 +386,18 @@ class ICEBERG_EXPORT SnapshotSummaryBuilder {
   std::unordered_map<std::string, std::string> Build() const;
 
  private:
+  template <typename Sink, typename T>
+  static void SetIf(bool condition, Sink&& sink, const std::string& property, T value) {
+    if (condition) {
+      if constexpr (std::is_same_v<T, const char*> || std::is_same_v<T, std::string> ||
+                    std::is_convertible_v<T, std::string_view>) {
+        sink(property, std::string(value));
+      } else {
+        sink(property, std::to_string(value));
+      }
+    }
+  }
+
   Status UpdatePartitions(const PartitionSpec& spec, const DataFile& file,
                           bool is_addition);
   std::string PartitionSummary(const UpdateMetrics& metrics) const;
