@@ -46,7 +46,7 @@ namespace iceberg {
 /// this class.
 class ICEBERG_EXPORT RoaringPositionBitmap {
  public:
-  /// \brief Maximum supported position.
+  /// \brief Maximum supported position (aligned with the Java implementation).
   static constexpr int64_t kMaxPosition = 0x7FFFFFFE80000000LL;
 
   RoaringPositionBitmap();
@@ -55,8 +55,8 @@ class ICEBERG_EXPORT RoaringPositionBitmap {
   RoaringPositionBitmap(RoaringPositionBitmap&& other) noexcept;
   RoaringPositionBitmap& operator=(RoaringPositionBitmap&& other) noexcept;
 
-  RoaringPositionBitmap(const RoaringPositionBitmap&) = delete;
-  RoaringPositionBitmap& operator=(const RoaringPositionBitmap&) = delete;
+  RoaringPositionBitmap(const RoaringPositionBitmap& other);
+  RoaringPositionBitmap& operator=(const RoaringPositionBitmap& other);
 
   /// \brief Sets a position in the bitmap.
   /// \param pos the position (must be >= 0 and <= kMaxPosition)

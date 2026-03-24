@@ -41,12 +41,12 @@ constexpr size_t kBitmapKeySizeBytes = 4;
 int32_t Key(int64_t pos) { return static_cast<int32_t>(pos >> 32); }
 
 // Extracts low 32 bits from a 64-bit position.
-uint32_t Pos32Bits(int64_t pos) { return static_cast<uint32_t>(pos); }
+uint32_t Pos32Bits(int64_t pos) { return static_cast<uint32_t>(0xFFFFFFFF & pos); }
 
 // Combines key (high 32 bits) and pos32 (low 32 bits) into a 64-bit
 // position. The low 32 bits are zero-extended to avoid sign extension.
 int64_t ToPosition(int32_t key, uint32_t pos32) {
-  return (static_cast<int64_t>(key) << 32) | static_cast<int64_t>(pos32);
+  return (int64_t{key} << 32) | int64_t{pos32};
 }
 
 void WriteLE64(char* buf, int64_t value) {
@@ -94,6 +94,20 @@ struct RoaringPositionBitmap::Impl {
 RoaringPositionBitmap::RoaringPositionBitmap() : impl_(std::make_unique<Impl>()) {}
 
 RoaringPositionBitmap::~RoaringPositionBitmap() = default;
+
+RoaringPositionBitmap::RoaringPositionBitmap(const RoaringPositionBitmap& other)
+    : impl_(other.impl_ != nullptr ? std::make_unique<Impl>(*other.impl_)
+                                   : std::make_unique<Impl>()) {}
+
+RoaringPositionBitmap& RoaringPositionBitmap::operator=(
+    const RoaringPositionBitmap& other) {
+  if (this == &other) {
+    return *this;
+  }
+  impl_ = other.impl_ != nullptr ? std::make_unique<Impl>(*other.impl_)
+                                 : std::make_unique<Impl>();
+  return *this;
+}
 
 RoaringPositionBitmap::RoaringPositionBitmap(RoaringPositionBitmap&&) noexcept = default;
 
@@ -167,6 +181,8 @@ size_t RoaringPositionBitmap::SerializedSizeInBytes() const {
   return size;
 }
 
+// Serializes using the portable format (little-endian).
+// See https://iceberg.apache.org/puffin-spec/#deletion-vector-v1-blob-type
 Result<std::string> RoaringPositionBitmap::Serialize() const {
   size_t size = SerializedSizeInBytes();
   std::string result(size, '\0');
@@ -243,7 +259,7 @@ Result<RoaringPositionBitmap> RoaringPositionBitmap::Deserialize(std::string_vie
     buf += bitmap_size;
     remaining -= bitmap_size;
 
-    impl->bitmaps.push_back(std::move(bitmap));
+    impl->bitmaps.emplace_back(std::move(bitmap));
     last_key = key;
     --remaining_count;
   }
