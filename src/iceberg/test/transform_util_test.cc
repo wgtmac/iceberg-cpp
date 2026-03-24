@@ -159,6 +159,38 @@ TEST(TransformUtilTest, Base64Encode) {
   EXPECT_EQ("AA==", TransformUtil::Base64Encode({"\x00", 1}));
 }
 
+TEST(TransformUtilTest, Base64UrlDecode) {
+  // Empty string
+  EXPECT_THAT(TransformUtil::Base64UrlDecode(""), IsOkAndEq(""));
+
+  // No padding
+  EXPECT_THAT(TransformUtil::Base64UrlDecode("YQ"), IsOkAndEq("a"));
+  EXPECT_THAT(TransformUtil::Base64UrlDecode("YWI"), IsOkAndEq("ab"));
+  EXPECT_THAT(TransformUtil::Base64UrlDecode("YWJj"), IsOkAndEq("abc"));
+
+  // RFC 4648 test vectors
+  EXPECT_THAT(TransformUtil::Base64UrlDecode("Zg"), IsOkAndEq("f"));
+  EXPECT_THAT(TransformUtil::Base64UrlDecode("Zm8"), IsOkAndEq("fo"));
+  EXPECT_THAT(TransformUtil::Base64UrlDecode("Zm9v"), IsOkAndEq("foo"));
+  EXPECT_THAT(TransformUtil::Base64UrlDecode("Zm9vYg"), IsOkAndEq("foob"));
+  EXPECT_THAT(TransformUtil::Base64UrlDecode("Zm9vYmE"), IsOkAndEq("fooba"));
+  EXPECT_THAT(TransformUtil::Base64UrlDecode("Zm9vYmFy"), IsOkAndEq("foobar"));
+
+  // Base64Url specific characters
+  // "-" -> 62, "_" -> 63
+  // ">>?" -> Base64: "Pj4/" -> Base64Url: "Pj4_"
+  EXPECT_THAT(TransformUtil::Base64UrlDecode("Pj4_"), IsOkAndEq(">>?"));
+  // "?>>" -> Base64: "Pz4+" -> Base64Url: "Pz4-"
+  EXPECT_THAT(TransformUtil::Base64UrlDecode("Pz4-"), IsOkAndEq("?>>"));
+
+  // Padding should be handled if present (though JWT omits it)
+  EXPECT_THAT(TransformUtil::Base64UrlDecode("YQ=="), IsOkAndEq("a"));
+
+  // Invalid characters
+  EXPECT_THAT(TransformUtil::Base64UrlDecode("YQ*"),
+              IsError(ErrorKind::kInvalidArgument));
+}
+
 struct ParseRoundTripParam {
   std::string name;
   std::string str;

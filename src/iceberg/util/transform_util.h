@@ -139,6 +139,9 @@ class ICEBERG_EXPORT TransformUtil {
 
   /// \brief Base64 encode a string
   static std::string Base64Encode(std::string_view str_to_encode);
+
+  /// \brief Base64Url decode a string
+  static Result<std::string> Base64UrlDecode(std::string_view str_to_decode);
 };
 
 }  // namespace iceberg

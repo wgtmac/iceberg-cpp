@@ -96,6 +96,9 @@ class ICEBERG_REST_EXPORT AuthProperties : public ConfigBase<AuthProperties> {
   /// \brief Build optional OAuth params (audience, resource) from config.
   std::unordered_map<std::string, std::string> optional_oauth_params() const;
 
+  /// \brief Get the token expiration time in milliseconds.
+  std::optional<int64_t> expires_at_millis() const { return expires_at_millis_; }
+
  private:
   std::string client_id_;
   std::string client_secret_;
