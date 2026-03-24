@@ -161,30 +161,30 @@ TEST(TransformUtilTest, Base64Encode) {
 
 TEST(TransformUtilTest, Base64UrlDecode) {
   // Empty string
-  EXPECT_THAT(TransformUtil::Base64UrlDecode(""), IsOkAndEq(""));
+  EXPECT_THAT(TransformUtil::Base64UrlDecode(""), HasValue(std::string("")));
 
   // No padding
-  EXPECT_THAT(TransformUtil::Base64UrlDecode("YQ"), IsOkAndEq("a"));
-  EXPECT_THAT(TransformUtil::Base64UrlDecode("YWI"), IsOkAndEq("ab"));
-  EXPECT_THAT(TransformUtil::Base64UrlDecode("YWJj"), IsOkAndEq("abc"));
+  EXPECT_THAT(TransformUtil::Base64UrlDecode("YQ"), HasValue(std::string("a")));
+  EXPECT_THAT(TransformUtil::Base64UrlDecode("YWI"), HasValue(std::string("ab")));
+  EXPECT_THAT(TransformUtil::Base64UrlDecode("YWJj"), HasValue(std::string("abc")));
 
   // RFC 4648 test vectors
-  EXPECT_THAT(TransformUtil::Base64UrlDecode("Zg"), IsOkAndEq("f"));
-  EXPECT_THAT(TransformUtil::Base64UrlDecode("Zm8"), IsOkAndEq("fo"));
-  EXPECT_THAT(TransformUtil::Base64UrlDecode("Zm9v"), IsOkAndEq("foo"));
-  EXPECT_THAT(TransformUtil::Base64UrlDecode("Zm9vYg"), IsOkAndEq("foob"));
-  EXPECT_THAT(TransformUtil::Base64UrlDecode("Zm9vYmE"), IsOkAndEq("fooba"));
-  EXPECT_THAT(TransformUtil::Base64UrlDecode("Zm9vYmFy"), IsOkAndEq("foobar"));
+  EXPECT_THAT(TransformUtil::Base64UrlDecode("Zg"), HasValue(std::string("f")));
+  EXPECT_THAT(TransformUtil::Base64UrlDecode("Zm8"), HasValue(std::string("fo")));
+  EXPECT_THAT(TransformUtil::Base64UrlDecode("Zm9v"), HasValue(std::string("foo")));
+  EXPECT_THAT(TransformUtil::Base64UrlDecode("Zm9vYg"), HasValue(std::string("foob")));
+  EXPECT_THAT(TransformUtil::Base64UrlDecode("Zm9vYmE"), HasValue(std::string("fooba")));
+  EXPECT_THAT(TransformUtil::Base64UrlDecode("Zm9vYmFy"), HasValue(std::string("foobar")));
 
   // Base64Url specific characters
   // "-" -> 62, "_" -> 63
   // ">>?" -> Base64: "Pj4/" -> Base64Url: "Pj4_"
-  EXPECT_THAT(TransformUtil::Base64UrlDecode("Pj4_"), IsOkAndEq(">>?"));
+  EXPECT_THAT(TransformUtil::Base64UrlDecode("Pj4_"), HasValue(std::string(">>?")));
   // "?>>" -> Base64: "Pz4+" -> Base64Url: "Pz4-"
-  EXPECT_THAT(TransformUtil::Base64UrlDecode("Pz4-"), IsOkAndEq("?>>"));
+  EXPECT_THAT(TransformUtil::Base64UrlDecode("Pz4-"), HasValue(std::string("?>>")));
 
   // Padding should be handled if present (though JWT omits it)
-  EXPECT_THAT(TransformUtil::Base64UrlDecode("YQ=="), IsOkAndEq("a"));
+  EXPECT_THAT(TransformUtil::Base64UrlDecode("YQ=="), HasValue(std::string("a")));
 
   // Invalid characters
   EXPECT_THAT(TransformUtil::Base64UrlDecode("YQ*"),
