@@ -174,7 +174,8 @@ TEST(TransformUtilTest, Base64UrlDecode) {
   EXPECT_THAT(TransformUtil::Base64UrlDecode("Zm9v"), HasValue(std::string("foo")));
   EXPECT_THAT(TransformUtil::Base64UrlDecode("Zm9vYg"), HasValue(std::string("foob")));
   EXPECT_THAT(TransformUtil::Base64UrlDecode("Zm9vYmE"), HasValue(std::string("fooba")));
-  EXPECT_THAT(TransformUtil::Base64UrlDecode("Zm9vYmFy"), HasValue(std::string("foobar")));
+  EXPECT_THAT(TransformUtil::Base64UrlDecode("Zm9vYmFy"),
+              HasValue(std::string("foobar")));
 
   // Base64Url specific characters
   // "-" -> 62, "_" -> 63
