@@ -193,7 +193,7 @@ Result<std::string> RoaringPositionBitmap::Serialize() const {
   buf += kBitmapCountSizeBytes;
 
   // Write each bitmap with its key
-  for (int32_t key = 0; key < static_cast<int32_t>(impl_->bitmaps.size()); ++key) {
+  for (int32_t key = 0; std::cmp_less(key, impl_->bitmaps.size()); ++key) {
     WriteLE32(buf, key);
     buf += kBitmapKeySizeBytes;
     size_t written = impl_->bitmaps[key].write(buf, /*portable=*/true);
