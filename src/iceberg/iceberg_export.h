@@ -27,8 +27,31 @@
 #  else
 #    define ICEBERG_EXPORT __declspec(dllimport)
 #  endif
-#else  // Not Windows
+
+#  define ICEBERG_TEMPLATE_EXPORT ICEBERG_EXPORT
+
+// For template class declarations. Empty on MSVC: dllexport on a class template
+// declaration combined with extern template triggers C4910.
+#  if defined(_MSC_VER)
+#    define ICEBERG_TEMPLATE_CLASS_EXPORT
+#  else
+#    define ICEBERG_TEMPLATE_CLASS_EXPORT ICEBERG_EXPORT
+#  endif
+
+// For extern template declarations. Empty when building the DLL on MSVC:
+// `extern` + `dllexport` is contradictory and triggers C4910.
+#  if defined(_MSC_VER) && defined(ICEBERG_EXPORTING) && !defined(ICEBERG_STATIC)
+#    define ICEBERG_EXTERN_TEMPLATE_CLASS_EXPORT
+#  else
+#    define ICEBERG_EXTERN_TEMPLATE_CLASS_EXPORT ICEBERG_TEMPLATE_EXPORT
+#  endif
+
+#else  // Non-Windows
 #  ifndef ICEBERG_EXPORT
 #    define ICEBERG_EXPORT __attribute__((visibility("default")))
 #  endif
+
+#  define ICEBERG_TEMPLATE_EXPORT
+#  define ICEBERG_TEMPLATE_CLASS_EXPORT ICEBERG_EXPORT
+#  define ICEBERG_EXTERN_TEMPLATE_CLASS_EXPORT ICEBERG_TEMPLATE_EXPORT
 #endif

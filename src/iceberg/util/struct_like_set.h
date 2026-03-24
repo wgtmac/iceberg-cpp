@@ -45,7 +45,7 @@ namespace iceberg {
 /// only when the caller guarantees schema conformance and the validation
 /// overhead must be avoided.
 template <bool kValidate = true>
-class ICEBERG_EXPORT StructLikeSet {
+class ICEBERG_TEMPLATE_CLASS_EXPORT StructLikeSet {
  public:
   /// \brief Create a StructLikeSet for the given struct type.
   explicit StructLikeSet(const StructType& type);
@@ -102,7 +102,7 @@ class ICEBERG_EXPORT StructLikeSet {
 /// that guarantee schema conformance.
 using UncheckedStructLikeSet = StructLikeSet<false>;
 
-extern template class StructLikeSet<true>;
-extern template class StructLikeSet<false>;
+extern template class ICEBERG_EXTERN_TEMPLATE_CLASS_EXPORT StructLikeSet<true>;
+extern template class ICEBERG_EXTERN_TEMPLATE_CLASS_EXPORT StructLikeSet<false>;
 
 }  // namespace iceberg

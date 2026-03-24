@@ -617,7 +617,7 @@ bool StructLikeSet<kValidate>::KeyEqual::operator()(
   return StructLikeEqualUnchecked(*lhs, rhs);
 }
 
-template class StructLikeSet<true>;
-template class StructLikeSet<false>;
+template class ICEBERG_TEMPLATE_EXPORT StructLikeSet<true>;
+template class ICEBERG_TEMPLATE_EXPORT StructLikeSet<false>;
 
 }  // namespace iceberg
