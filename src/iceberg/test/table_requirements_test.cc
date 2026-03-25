@@ -494,8 +494,7 @@ TEST(TableRequirementsTest, SetDefaultPartitionSpecFailure) {
   metadata->default_spec_id = kInitialSpecId;
 
   std::vector<std::unique_ptr<TableUpdate>> updates;
-  updates.push_back(
-      std::make_unique<table::SetDefaultPartitionSpec>(kInitialSpecId));
+  updates.push_back(std::make_unique<table::SetDefaultPartitionSpec>(kInitialSpecId));
 
   auto result = TableRequirements::ForUpdateTable(*metadata, updates);
   ASSERT_THAT(result, IsOk());
@@ -804,8 +803,7 @@ TEST(TableRequirementsTest, SetDefaultSortOrderFailure) {
   metadata->default_sort_order_id = kUnsortedOrderId;
 
   std::vector<std::unique_ptr<TableUpdate>> updates;
-  updates.push_back(
-      std::make_unique<table::SetDefaultSortOrder>(kUnsortedOrderId));
+  updates.push_back(std::make_unique<table::SetDefaultSortOrder>(kUnsortedOrderId));
 
   auto result = TableRequirements::ForUpdateTable(*metadata, updates);
   ASSERT_THAT(result, IsOk());

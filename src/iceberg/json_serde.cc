@@ -599,8 +599,8 @@ Result<std::unique_ptr<PartitionField>> PartitionFieldFromJson(
   int32_t field_id;
   if (allow_field_id_missing) {
     // Partition field id in v1 is not tracked, so we use -1 to indicate that.
-    ICEBERG_ASSIGN_OR_RAISE(field_id, GetJsonValueOrDefault<int32_t>(
-                                          json, kFieldId, kInvalidFieldId));
+    ICEBERG_ASSIGN_OR_RAISE(
+        field_id, GetJsonValueOrDefault<int32_t>(json, kFieldId, kInvalidFieldId));
   } else {
     ICEBERG_ASSIGN_OR_RAISE(field_id, GetJsonValue<int32_t>(json, kFieldId));
   }
@@ -1018,9 +1018,8 @@ Status ParsePartitionSpecs(const nlohmann::json& json, int8_t format_version,
 
     // Create partition spec with schema validation
     ICEBERG_ASSIGN_OR_RAISE(
-        auto spec,
-        PartitionSpec::Make(*current_schema, kInitialSpecId,
-                            std::move(fields), /*allow_missing_fields=*/false));
+        auto spec, PartitionSpec::Make(*current_schema, kInitialSpecId, std::move(fields),
+                                       /*allow_missing_fields=*/false));
     default_spec_id = spec->spec_id();
     partition_specs.push_back(std::move(spec));
   }

@@ -160,8 +160,8 @@ class UpdatePartitionSpecTest : public ::testing::TestWithParam<int8_t> {
   // Helper to create an expected partition spec
   std::shared_ptr<PartitionSpec> MakeExpectedSpec(
       const std::vector<PartitionField>& fields, int32_t last_assigned_field_id) {
-    auto spec_result = PartitionSpec::Make(kInitialSpecId, fields,
-                                           last_assigned_field_id);
+    auto spec_result =
+        PartitionSpec::Make(kInitialSpecId, fields, last_assigned_field_id);
     if (!spec_result.has_value()) {
       ADD_FAILURE() << "Failed to create expected spec: " << spec_result.error().message;
       return nullptr;

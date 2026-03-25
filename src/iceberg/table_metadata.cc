@@ -209,8 +209,7 @@ Result<std::unique_ptr<TableMetadata>> TableMetadata::Make(
 
   // Rebuild the partition spec using the new column ids
   ICEBERG_ASSIGN_OR_RAISE(
-      auto fresh_spec,
-      FreshPartitionSpec(kInitialSpecId, spec, schema, *fresh_schema));
+      auto fresh_spec, FreshPartitionSpec(kInitialSpecId, spec, schema, *fresh_schema));
 
   // rebuild the sort order using the new column ids
   ICEBERG_ASSIGN_OR_RAISE(
