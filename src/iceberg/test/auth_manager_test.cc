@@ -358,4 +358,29 @@ TEST_F(AuthManagerTest, OAuthTokenResponseNATokenType) {
   EXPECT_EQ(result->token_type, "N_A");
 }
 
+// Verifies that JWT exp claim is parsed from token in AuthProperties
+TEST_F(AuthManagerTest, AuthPropertiesParseJwtExp) {
+  // Payload: {"exp": 1735689600} (2025-01-01 00:00:00 UTC)
+  // Base64Url(payload): "eyJleHAiOiAxNzM1Njg5NjAwfQ"
+  std::string token = "header.eyJleHAiOiAxNzM1Njg5NjAwfQ.signature";
+  std::unordered_map<std::string, std::string> properties = {
+      {AuthProperties::kToken.key(), token}};
+
+  auto config_result = AuthProperties::FromProperties(properties);
+  ASSERT_THAT(config_result, IsOk());
+  ASSERT_TRUE(config_result->expires_at_millis().has_value());
+  EXPECT_EQ(config_result->expires_at_millis().value(), 1735689600000LL);
+}
+
+// Verifies that invalid JWT doesn't set expiration
+TEST_F(AuthManagerTest, AuthPropertiesInvalidJwtNoExp) {
+  std::string token = "invalid-token-no-dots";
+  std::unordered_map<std::string, std::string> properties = {
+      {AuthProperties::kToken.key(), token}};
+
+  auto config_result = AuthProperties::FromProperties(properties);
+  ASSERT_THAT(config_result, IsOk());
+  EXPECT_FALSE(config_result->expires_at_millis().has_value());
+}
+
 }  // namespace iceberg::rest::auth

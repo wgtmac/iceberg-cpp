@@ -283,4 +283,40 @@ std::string TransformUtil::Base64Encode(std::string_view str_to_encode) {
   return encoded;
 }
 
+Result<std::string> TransformUtil::Base64UrlDecode(std::string_view str_to_decode) {
+  std::string decoded;
+  decoded.reserve(str_to_decode.size() * 3 / 4);
+
+  uint32_t val = 0;
+  int32_t bits = 0;
+  for (char c : str_to_decode) {
+    if (c == '=') break;
+    int8_t v = -1;
+    if (c >= 'A' && c <= 'Z')
+      v = static_cast<int8_t>(c - 'A');
+    else if (c >= 'a' && c <= 'z')
+      v = static_cast<int8_t>(c - 'a' + 26);
+    else if (c >= '0' && c <= '9')
+      v = static_cast<int8_t>(c - '0' + 52);
+    else if (c == '-' || c == '+')
+      v = 62;
+    else if (c == '_' || c == '/')
+      v = 63;
+
+    if (v == -1) {
+      return InvalidArgument("Invalid character in Base64Url string: '{}'", c);
+    }
+
+    val = (val << 6) | static_cast<uint32_t>(v);
+    bits += 6;
+
+    if (bits >= 8) {
+      bits -= 8;
+      decoded.push_back(static_cast<char>((val >> bits) & 0xFF));
+      val &= (1U << bits) - 1;
+    }
+  }
+  return decoded;
+}
+
 }  // namespace iceberg

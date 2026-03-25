@@ -124,12 +124,14 @@ class HasValueMatcher {
 
   void DescribeTo(std::ostream* os) const {
     *os << "has a value that ";
-    matcher_.DescribeTo(os);
+    ::testing::internal::DescribeMatcher<const typename MatcherT::value_type&>(
+        matcher_, os);
   }
 
   void DescribeNegationTo(std::ostream* os) const {
     *os << "does not have a value that ";
-    matcher_.DescribeTo(os);
+    ::testing::internal::DescribeMatcher<const typename MatcherT::value_type&>(
+        matcher_, os);
   }
 
  private:
@@ -140,7 +142,9 @@ class HasValueMatcher {
 template <typename MatcherT>
 auto HasValue(MatcherT&& matcher) {
   return ::testing::MakePolymorphicMatcher(
-      HasValueMatcher<std::remove_cvref_t<MatcherT>>(std::forward<MatcherT>(matcher)));
+      HasValueMatcher<::testing::Matcher<const std::remove_cvref_t<MatcherT>&>>(
+          ::testing::SafeMatcherCast<const std::remove_cvref_t<MatcherT>&>(
+              std::forward<MatcherT>(matcher))));
 }
 
 // Overload for the common case where we just want to check for presence of any value

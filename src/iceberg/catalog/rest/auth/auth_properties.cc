@@ -21,7 +21,11 @@
 
 #include <utility>
 
+#include <nlohmann/json.hpp>
+
 #include "iceberg/catalog/rest/catalog_properties.h"
+#include "iceberg/util/macros.h"
+#include "iceberg/util/transform_util.h"
 
 namespace iceberg::rest::auth {
 
@@ -75,7 +79,25 @@ Result<AuthProperties> AuthProperties::FromProperties(
     }
   }
 
-  // TODO(lishuxu): Parse JWT exp claim from token to set expires_at_millis_.
+  // Parse JWT exp claim from token to set expires_at_millis_.
+  if (auto token = config.token(); !token.empty()) {
+    auto first_dot = token.find('.');
+    auto last_dot = token.find('.', first_dot + 1);
+    if (first_dot != std::string::npos && last_dot != std::string::npos) {
+      auto payload_encoded = token.substr(first_dot + 1, last_dot - first_dot - 1);
+      auto payload_decoded = TransformUtil::Base64UrlDecode(payload_encoded);
+      if (payload_decoded.has_value()) {
+        try {
+          auto payload_json = nlohmann::json::parse(payload_decoded.value());
+          if (payload_json.contains("exp") && payload_json["exp"].is_number()) {
+            config.expires_at_millis_ = payload_json["exp"].get<int64_t>() * 1000;
+          }
+        } catch (const nlohmann::json::parse_error& e) {
+          // Ignore parse errors from invalid JWT payloads.
+        }
+      }
+    }
+  }
 
   return config;
 }
