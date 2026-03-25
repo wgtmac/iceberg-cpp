@@ -388,7 +388,7 @@ TableScanBuilder<ScanType>::ResolveSnapshotSchema() {
     if (context_.snapshot_id.has_value()) {
       ICEBERG_ASSIGN_OR_RAISE(auto snapshot,
                               metadata_->SnapshotById(*context_.snapshot_id));
-      int32_t schema_id = snapshot->schema_id.value_or(Schema::kInitialSchemaId);
+      int32_t schema_id = snapshot->schema_id.value_or(kInitialSchemaId);
       ICEBERG_ASSIGN_OR_RAISE(snapshot_schema_, metadata_->SchemaById(schema_id));
     } else {
       ICEBERG_ASSIGN_OR_RAISE(snapshot_schema_, metadata_->Schema());

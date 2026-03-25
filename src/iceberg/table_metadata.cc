@@ -71,7 +71,7 @@ Result<std::unique_ptr<PartitionSpec>> FreshPartitionSpec(int32_t spec_id,
                                                           const Schema& fresh_schema) {
   std::vector<PartitionField> partition_fields;
   partition_fields.reserve(spec.fields().size());
-  int32_t last_partition_field_id = PartitionSpec::kInvalidPartitionFieldId;
+  int32_t last_partition_field_id = kInvalidPartitionFieldId;
   for (auto& field : spec.fields()) {
     ICEBERG_ASSIGN_OR_RAISE(auto source_name,
                             base_schema.FindColumnNameById(field.source_id()));
@@ -145,7 +145,7 @@ std::vector<std::unique_ptr<TableUpdate>> ChangesForCreate(
   if (auto partition_spec_result = metadata.PartitionSpec();
       partition_spec_result.has_value()) {
     auto spec = partition_spec_result.value();
-    if (spec && spec->spec_id() != PartitionSpec::kInitialSpecId) {
+    if (spec && spec->spec_id() != kInitialSpecId) {
       changes.push_back(std::make_unique<table::AddPartitionSpec>(spec));
     } else {
       changes.push_back(
@@ -205,17 +205,16 @@ Result<std::unique_ptr<TableMetadata>> TableMetadata::Make(
   int32_t last_column_id = 0;
   auto next_id = [&last_column_id]() -> int32_t { return ++last_column_id; };
   ICEBERG_ASSIGN_OR_RAISE(auto fresh_schema,
-                          AssignFreshIds(Schema::kInitialSchemaId, schema, next_id));
+                          AssignFreshIds(kInitialSchemaId, schema, next_id));
 
   // Rebuild the partition spec using the new column ids
   ICEBERG_ASSIGN_OR_RAISE(
-      auto fresh_spec,
-      FreshPartitionSpec(PartitionSpec::kInitialSpecId, spec, schema, *fresh_schema));
+      auto fresh_spec, FreshPartitionSpec(kInitialSpecId, spec, schema, *fresh_schema));
 
   // rebuild the sort order using the new column ids
   ICEBERG_ASSIGN_OR_RAISE(
       auto fresh_order,
-      FreshSortOrder(SortOrder::kInitialSortOrderId, sort_order, schema, *fresh_schema))
+      FreshSortOrder(kInitialSortOrderId, sort_order, schema, *fresh_schema))
 
   // Validata the metrics configuration.
   ICEBERG_RETURN_UNEXPECTED(
@@ -549,11 +548,11 @@ class TableMetadataBuilder::Impl {
     metadata_.format_version = format_version;
     metadata_.last_sequence_number = TableMetadata::kInitialSequenceNumber;
     metadata_.last_updated_ms = kInvalidLastUpdatedMs;
-    metadata_.last_column_id = Schema::kInvalidColumnId;
-    metadata_.default_spec_id = PartitionSpec::kInitialSpecId;
-    metadata_.last_partition_id = PartitionSpec::kInvalidPartitionFieldId;
+    metadata_.last_column_id = kInvalidColumnId;
+    metadata_.default_spec_id = kInitialSpecId;
+    metadata_.last_partition_id = kInvalidPartitionFieldId;
     metadata_.current_snapshot_id = kInvalidSnapshotId;
-    metadata_.default_sort_order_id = SortOrder::kInitialSortOrderId;
+    metadata_.default_sort_order_id = kInitialSortOrderId;
     metadata_.next_row_id = TableMetadata::kInitialRowId;
   }
 
@@ -1367,10 +1366,10 @@ Result<std::unique_ptr<TableMetadata>> TableMetadataBuilder::Impl::Build() {
 int32_t TableMetadataBuilder::Impl::ReuseOrCreateNewSortOrderId(
     const SortOrder& new_order) {
   if (new_order.is_unsorted()) {
-    return SortOrder::kUnsortedOrderId;
+    return kUnsortedOrderId;
   }
   // determine the next order id
-  int32_t new_order_id = SortOrder::kInitialSortOrderId;
+  int32_t new_order_id = kInitialSortOrderId;
   for (const auto& order : metadata_.sort_orders) {
     if (order->SameOrder(new_order)) {
       return order->order_id();
@@ -1384,7 +1383,7 @@ int32_t TableMetadataBuilder::Impl::ReuseOrCreateNewSortOrderId(
 int32_t TableMetadataBuilder::Impl::ReuseOrCreateNewPartitionSpecId(
     const PartitionSpec& new_spec) {
   // if the spec already exists, use the same ID. otherwise, use the highest ID + 1.
-  int32_t new_spec_id = PartitionSpec::kInitialSpecId;
+  int32_t new_spec_id = kInitialSpecId;
   for (const auto& spec : metadata_.partition_specs) {
     if (new_spec.CompatibleWith(*spec)) {
       return spec->spec_id();

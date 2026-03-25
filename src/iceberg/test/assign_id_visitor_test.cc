@@ -83,7 +83,7 @@ Result<std::unique_ptr<Schema>> CreateNestedSchema(
           SchemaField::MakeOptional(/*field_id=*/30, "map", CreateMapWithStructValue()),
           SchemaField::MakeRequired(/*field_id=*/40, "struct", CreateNestedStruct()),
       },
-      Schema::kInitialSchemaId, std::move(identifier_field_ids));
+      kInitialSchemaId, std::move(identifier_field_ids));
 }
 
 }  // namespace
@@ -94,7 +94,7 @@ TEST(AssignFreshIdVisitorTest, FlatSchema) {
   std::atomic<int32_t> id = 0;
   auto next_id = [&id]() { return ++id; };
   ICEBERG_UNWRAP_OR_FAIL(auto fresh_schema,
-                         AssignFreshIds(Schema::kInitialSchemaId, schema, next_id));
+                         AssignFreshIds(kInitialSchemaId, schema, next_id));
 
   ASSERT_EQ(fresh_schema->fields().size(), schema.fields().size());
   EXPECT_EQ(Schema(
@@ -104,7 +104,7 @@ TEST(AssignFreshIdVisitorTest, FlatSchema) {
                     SchemaField::MakeOptional(/*field_id=*/3, "age", iceberg::int32()),
                     SchemaField::MakeRequired(/*field_id=*/4, "data", iceberg::float64()),
                 },
-                Schema::kInitialSchemaId),
+                kInitialSchemaId),
             *fresh_schema);
 }
 
@@ -113,7 +113,7 @@ TEST(AssignFreshIdVisitorTest, NestedSchema) {
   std::atomic<int32_t> id = 0;
   auto next_id = [&id]() { return ++id; };
   ICEBERG_UNWRAP_OR_FAIL(auto fresh_schema,
-                         AssignFreshIds(Schema::kInitialSchemaId, *schema, next_id));
+                         AssignFreshIds(kInitialSchemaId, *schema, next_id));
 
   ASSERT_EQ(4, fresh_schema->fields().size());
   for (int32_t i = 0; i < fresh_schema->fields().size(); ++i) {
@@ -175,7 +175,7 @@ TEST(AssignFreshIdVisitorTest, RefreshIdentifierId) {
 
   ICEBERG_UNWRAP_OR_FAIL(auto schema, CreateNestedSchema({10, 301}));
   ICEBERG_UNWRAP_OR_FAIL(auto fresh_schema,
-                         AssignFreshIds(Schema::kInitialSchemaId, *schema, next_id));
+                         AssignFreshIds(kInitialSchemaId, *schema, next_id));
   EXPECT_THAT(fresh_schema->IdentifierFieldIds(), testing::ElementsAre(1, 12));
   ICEBERG_UNWRAP_OR_FAIL(auto identifier_field_names,
                          fresh_schema->IdentifierFieldNames());

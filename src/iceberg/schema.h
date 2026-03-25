@@ -30,6 +30,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "iceberg/constants.h"
 #include "iceberg/iceberg_export.h"
 #include "iceberg/result.h"
 #include "iceberg/schema_field.h"
@@ -48,10 +49,6 @@ class SchemaCache;
 /// evolution.
 class ICEBERG_EXPORT Schema : public StructType {
  public:
-  static constexpr int32_t kInitialSchemaId = 0;
-  static constexpr int32_t kInitialColumnId = 0;
-  static constexpr int32_t kInvalidColumnId = -1;
-
   /// \brief Special value to select all columns from manifest files.
   static constexpr std::string_view kAllColumns = "*";
 

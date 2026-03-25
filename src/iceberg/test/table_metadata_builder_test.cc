@@ -74,14 +74,14 @@ std::unique_ptr<TableMetadata> CreateBaseMetadata(
   metadata->schemas.push_back(CreateTestSchema());
   if (spec == nullptr) {
     metadata->partition_specs.push_back(PartitionSpec::Unpartitioned());
-    metadata->default_spec_id = PartitionSpec::kInitialSpecId;
+    metadata->default_spec_id = kInitialSpecId;
   } else {
     metadata->default_spec_id = spec->spec_id();
     metadata->partition_specs.push_back(std::move(spec));
   }
   metadata->last_partition_id = 0;
   metadata->current_snapshot_id = kInvalidSnapshotId;
-  metadata->default_sort_order_id = SortOrder::kUnsortedOrderId;
+  metadata->default_sort_order_id = kUnsortedOrderId;
   metadata->sort_orders.push_back(SortOrder::Unsorted());
   metadata->next_row_id = TableMetadata::kInitialRowId;
   return metadata;
@@ -118,17 +118,17 @@ TEST(TableMetadataTest, Make) {
 
   // Check partition spec
   ASSERT_EQ(1, metadata->partition_specs.size());
-  EXPECT_EQ(PartitionSpec::kInitialSpecId, metadata->partition_specs[0]->spec_id());
+  EXPECT_EQ(kInitialSpecId, metadata->partition_specs[0]->spec_id());
   auto spec_fields =
       metadata->partition_specs[0]->fields() | std::ranges::to<std::vector>();
   ASSERT_EQ(1, spec_fields.size());
-  EXPECT_EQ(PartitionSpec::kInvalidPartitionFieldId + 1, spec_fields[0].field_id());
+  EXPECT_EQ(kInvalidPartitionFieldId + 1, spec_fields[0].field_id());
   EXPECT_EQ(2, spec_fields[0].source_id());
   EXPECT_EQ("part_name", spec_fields[0].name());
 
   // Check sort order
   ASSERT_EQ(1, metadata->sort_orders.size());
-  EXPECT_EQ(SortOrder::kInitialSortOrderId, metadata->sort_orders[0]->order_id());
+  EXPECT_EQ(kInitialSortOrderId, metadata->sort_orders[0]->order_id());
   auto order_fields = metadata->sort_orders[0]->fields() | std::ranges::to<std::vector>();
   ASSERT_EQ(1, order_fields.size());
   EXPECT_EQ(3, order_fields[0].source_id());
@@ -215,8 +215,8 @@ TEST(TableMetadataBuilderTest, BuildFromEmpty) {
 
   EXPECT_EQ(metadata->format_version, 2);
   EXPECT_EQ(metadata->last_sequence_number, TableMetadata::kInitialSequenceNumber);
-  EXPECT_EQ(metadata->default_spec_id, PartitionSpec::kInitialSpecId);
-  EXPECT_EQ(metadata->default_sort_order_id, SortOrder::kUnsortedOrderId);
+  EXPECT_EQ(metadata->default_spec_id, kInitialSpecId);
+  EXPECT_EQ(metadata->default_sort_order_id, kUnsortedOrderId);
   EXPECT_EQ(metadata->current_snapshot_id, kInvalidSnapshotId);
   EXPECT_TRUE(metadata->metadata_log.empty());
 }
@@ -839,7 +839,7 @@ TEST(TableMetadataBuilderTest, SetCurrentSchemaWithPartitionSpecRebuild) {
   auto schema = CreateTestSchema();
   ICEBERG_UNWRAP_OR_FAIL(
       auto spec,
-      PartitionSpec::Make(PartitionSpec::kInitialSpecId,
+      PartitionSpec::Make(kInitialSpecId,
                           {PartitionField(1, 1000, "id_bucket", Transform::Bucket(16))},
                           1000));
   base->partition_specs.push_back(std::move(spec));
@@ -956,7 +956,7 @@ TEST(TableMetadataBuilderTest, SetCurrentSchemaRebuildsSpecsAndOrders) {
   auto schema = CreateTestSchema();
   ICEBERG_UNWRAP_OR_FAIL(
       auto spec,
-      PartitionSpec::Make(PartitionSpec::kInitialSpecId,
+      PartitionSpec::Make(kInitialSpecId,
                           {PartitionField(1, 1000, "id_bucket", Transform::Bucket(16))},
                           1000));
   base->partition_specs.push_back(std::move(spec));
@@ -1024,7 +1024,7 @@ TEST(TableMetadataBuilderTest, RemoveSchemasBasic) {
   builder->RemoveSchemas({2, 3});
   ICEBERG_UNWRAP_OR_FAIL(metadata, builder->Build());
   ASSERT_EQ(metadata->schemas.size(), 1);
-  EXPECT_EQ(metadata->schemas[0]->schema_id(), Schema::kInitialSchemaId);
+  EXPECT_EQ(metadata->schemas[0]->schema_id(), kInitialSchemaId);
 }
 
 TEST(TableMetadataBuilderTest, RemoveSchemasCannotRemoveCurrent) {
@@ -1076,7 +1076,7 @@ TEST(TableMetadataBuilderTest, RemoveSchemasNonExistent) {
   builder->RemoveSchemas({1, 999, 888});
   ICEBERG_UNWRAP_OR_FAIL(metadata, builder->Build());
   ASSERT_EQ(metadata->schemas.size(), 1);
-  EXPECT_EQ(metadata->schemas[0]->schema_id(), Schema::kInitialSchemaId);
+  EXPECT_EQ(metadata->schemas[0]->schema_id(), kInitialSchemaId);
 }
 
 TEST(TableMetadataBuilderTest, RemoveSchemasEmptySet) {

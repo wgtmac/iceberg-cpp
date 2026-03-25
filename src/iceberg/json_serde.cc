@@ -564,7 +564,7 @@ Result<std::unique_ptr<Schema>> SchemaFromJson(const nlohmann::json& json) {
       auto identifier_field_ids,
       GetJsonValueOrDefault<std::vector<int32_t>>(json, kIdentifierFieldIds));
 
-  return Schema::Make(std::move(fields), schema_id_opt.value_or(Schema::kInitialSchemaId),
+  return Schema::Make(std::move(fields), schema_id_opt.value_or(kInitialSchemaId),
                       std::move(identifier_field_ids));
 }
 
@@ -599,8 +599,8 @@ Result<std::unique_ptr<PartitionField>> PartitionFieldFromJson(
   int32_t field_id;
   if (allow_field_id_missing) {
     // Partition field id in v1 is not tracked, so we use -1 to indicate that.
-    ICEBERG_ASSIGN_OR_RAISE(field_id, GetJsonValueOrDefault<int32_t>(
-                                          json, kFieldId, SchemaField::kInvalidFieldId));
+    ICEBERG_ASSIGN_OR_RAISE(
+        field_id, GetJsonValueOrDefault<int32_t>(json, kFieldId, kInvalidFieldId));
   } else {
     ICEBERG_ASSIGN_OR_RAISE(field_id, GetJsonValue<int32_t>(json, kFieldId));
   }
@@ -1001,14 +1001,14 @@ Status ParsePartitionSpecs(const nlohmann::json& json, int8_t format_version,
                             SafeDumpJson(partition_spec_json));
     }
 
-    int32_t next_partition_field_id = PartitionSpec::kLegacyPartitionDataIdStart;
+    int32_t next_partition_field_id = kLegacyPartitionDataIdStart;
     std::vector<PartitionField> fields;
     for (const auto& entry_json : partition_spec_json) {
       ICEBERG_ASSIGN_OR_RAISE(
           auto field, PartitionFieldFromJson(
                           entry_json, /*allow_field_id_missing=*/format_version == 1));
       int32_t field_id = field->field_id();
-      if (field_id == SchemaField::kInvalidFieldId) {
+      if (field_id == kInvalidFieldId) {
         // If the field ID is not set, we need to assign a new one
         field_id = next_partition_field_id++;
       }
@@ -1018,9 +1018,8 @@ Status ParsePartitionSpecs(const nlohmann::json& json, int8_t format_version,
 
     // Create partition spec with schema validation
     ICEBERG_ASSIGN_OR_RAISE(
-        auto spec,
-        PartitionSpec::Make(*current_schema, PartitionSpec::kInitialSpecId,
-                            std::move(fields), /*allow_missing_fields=*/false));
+        auto spec, PartitionSpec::Make(*current_schema, kInitialSpecId, std::move(fields),
+                                       /*allow_missing_fields=*/false));
     default_spec_id = spec->spec_id();
     partition_specs.push_back(std::move(spec));
   }
