@@ -117,24 +117,26 @@ RoaringPositionBitmap& RoaringPositionBitmap::operator=(
 RoaringPositionBitmap::RoaringPositionBitmap(std::unique_ptr<Impl> impl)
     : impl_(std::move(impl)) {}
 
-Status RoaringPositionBitmap::Add(int64_t pos) {
-  ICEBERG_RETURN_UNEXPECTED(ValidatePosition(pos));
+void RoaringPositionBitmap::Add(int64_t pos) {
+  if (pos < 0 || pos > kMaxPosition) {
+    return;  // Silently ignore invalid positions
+  }
   int32_t key = Key(pos);
   uint32_t pos32 = Pos32Bits(pos);
   impl_->AllocateBitmapsIfNeeded(key + 1);
   impl_->bitmaps[key].add(pos32);
-  return {};
 }
 
-Status RoaringPositionBitmap::AddRange(int64_t pos_start, int64_t pos_end) {
+void RoaringPositionBitmap::AddRange(int64_t pos_start, int64_t pos_end) {
   for (int64_t pos = pos_start; pos < pos_end; ++pos) {
-    ICEBERG_RETURN_UNEXPECTED(Add(pos));
+    Add(pos);
   }
-  return {};
 }
 
-Result<bool> RoaringPositionBitmap::Contains(int64_t pos) const {
-  ICEBERG_RETURN_UNEXPECTED(ValidatePosition(pos));
+bool RoaringPositionBitmap::Contains(int64_t pos) const {
+  if (pos < 0 || pos > kMaxPosition) {
+    return false;  // Invalid positions are not contained
+  }
   int32_t key = Key(pos);
   uint32_t pos32 = Pos32Bits(pos);
   return std::cmp_less(key, impl_->bitmaps.size()) && impl_->bitmaps[key].contains(pos32);

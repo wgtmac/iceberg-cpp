@@ -61,16 +61,17 @@ class ICEBERG_EXPORT RoaringPositionBitmap {
 
   /// \brief Sets a position in the bitmap.
   /// \param pos the position (must be >= 0 and <= kMaxPosition)
-  /// \return Status indicating success or InvalidArgument error
-  [[nodiscard]] Status Add(int64_t pos);
+  /// \note Invalid positions are silently ignored
+  void Add(int64_t pos);
 
   /// \brief Sets a range of positions [pos_start, pos_end).
-  /// \return Status indicating success or InvalidArgument error
-  [[nodiscard]] Status AddRange(int64_t pos_start, int64_t pos_end);
+  /// \note Invalid positions are silently ignored
+  void AddRange(int64_t pos_start, int64_t pos_end);
 
   /// \brief Checks if a position is set in the bitmap.
-  /// \return Result<bool> or InvalidArgument error
-  [[nodiscard]] Result<bool> Contains(int64_t pos) const;
+  /// \param pos the position to check
+  /// \return true if the position is set, false otherwise (including invalid positions)
+  bool Contains(int64_t pos) const;
 
   /// \brief Returns true if the bitmap has no positions set.
   bool IsEmpty() const;

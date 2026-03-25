@@ -66,8 +66,7 @@ void AssertEqualContent(const RoaringPositionBitmap& bitmap,
                         const std::set<int64_t>& positions) {
   ASSERT_EQ(bitmap.Cardinality(), positions.size());
   for (int64_t pos : positions) {
-    ASSERT_THAT(bitmap.Contains(pos), HasValue(::testing::Eq(true)))
-        << "Position not found: " << pos;
+    ASSERT_TRUE(bitmap.Contains(pos)) << "Position not found: " << pos;
   }
   bitmap.ForEach([&](int64_t pos) {
     ASSERT_TRUE(positions.contains(pos)) << "Unexpected position: " << pos;
@@ -88,7 +87,7 @@ void AssertEqual(RoaringPositionBitmap& bitmap, const std::set<int64_t>& positio
 RoaringPositionBitmap BuildBitmap(const std::set<int64_t>& positions) {
   RoaringPositionBitmap bitmap;
   for (int64_t pos : positions) {
-    EXPECT_THAT(bitmap.Add(pos), IsOk());
+    bitmap.Add(pos);
   }
   return bitmap;
 }
@@ -106,7 +105,7 @@ class RoaringPositionBitmapAddRangeTest
 TEST_P(RoaringPositionBitmapAddRangeTest, AddsExpectedPositions) {
   const auto& param = GetParam();
   RoaringPositionBitmap bitmap;
-  ASSERT_THAT(bitmap.AddRange(param.start, param.end), IsOk());
+  bitmap.AddRange(param.start, param.end);
 
   std::set<int64_t> expected_positions;
   for (int64_t pos = param.start; pos < param.end; ++pos) {
@@ -114,7 +113,7 @@ TEST_P(RoaringPositionBitmapAddRangeTest, AddsExpectedPositions) {
   }
   AssertEqualContent(bitmap, expected_positions);
   for (int64_t pos : param.absent_positions) {
-    ASSERT_FALSE(bitmap.Contains(pos).value());
+    ASSERT_FALSE(bitmap.Contains(pos));
   }
 }
 
@@ -234,14 +233,14 @@ void AssertInteropBitmapShape(const RoaringPositionBitmap& bitmap,
 TEST(RoaringPositionBitmapTest, TestAdd) {
   RoaringPositionBitmap bitmap;
 
-  ASSERT_THAT(bitmap.Add(10L), IsOk());
-  ASSERT_TRUE(bitmap.Contains(10L).value());
+  bitmap.Add(10L);
+  ASSERT_TRUE(bitmap.Contains(10L));
 
-  ASSERT_THAT(bitmap.Add(0L), IsOk());
-  ASSERT_TRUE(bitmap.Contains(0L).value());
+  bitmap.Add(0L);
+  ASSERT_TRUE(bitmap.Contains(0L));
 
-  ASSERT_THAT(bitmap.Add(10L), IsOk());  // duplicate
-  ASSERT_TRUE(bitmap.Contains(10L).value());
+  bitmap.Add(10L);  // duplicate
+  ASSERT_TRUE(bitmap.Contains(10L));
 }
 
 TEST(RoaringPositionBitmapTest, TestAddPositionsRequiringMultipleBitmaps) {
@@ -252,10 +251,10 @@ TEST(RoaringPositionBitmapTest, TestAddPositionsRequiringMultipleBitmaps) {
   int64_t pos3 = (int64_t{2} << 32) | 30L;
   int64_t pos4 = (int64_t{100} << 32) | 40L;
 
-  ASSERT_THAT(bitmap.Add(pos1), IsOk());
-  ASSERT_THAT(bitmap.Add(pos2), IsOk());
-  ASSERT_THAT(bitmap.Add(pos3), IsOk());
-  ASSERT_THAT(bitmap.Add(pos4), IsOk());
+  bitmap.Add(pos1);
+  bitmap.Add(pos2);
+  bitmap.Add(pos3);
+  bitmap.Add(pos4);
 
   AssertEqualContent(bitmap, {pos1, pos2, pos3, pos4});
   ASSERT_EQ(bitmap.SerializedSizeInBytes(), 1260);
@@ -263,7 +262,7 @@ TEST(RoaringPositionBitmapTest, TestAddPositionsRequiringMultipleBitmaps) {
 
 TEST(RoaringPositionBitmapTest, TestAddEmptyRange) {
   RoaringPositionBitmap bitmap;
-  ASSERT_THAT(bitmap.AddRange(10, 10), IsOk());
+  bitmap.AddRange(10, 10);
   ASSERT_TRUE(bitmap.IsEmpty());
 }
 
@@ -272,32 +271,32 @@ TEST(RoaringPositionBitmapTest, TestCardinality) {
 
   ASSERT_EQ(bitmap.Cardinality(), 0);
 
-  ASSERT_THAT(bitmap.Add(10L), IsOk());
-  ASSERT_THAT(bitmap.Add(20L), IsOk());
-  ASSERT_THAT(bitmap.Add(30L), IsOk());
+  bitmap.Add(10L);
+  bitmap.Add(20L);
+  bitmap.Add(30L);
   ASSERT_EQ(bitmap.Cardinality(), 3);
 
-  ASSERT_THAT(bitmap.Add(10L), IsOk());  // already exists
+  bitmap.Add(10L);  // already exists
   ASSERT_EQ(bitmap.Cardinality(), 3);
 }
 
 TEST(RoaringPositionBitmapTest, TestCardinalitySparseBitmaps) {
   RoaringPositionBitmap bitmap;
 
-  ASSERT_THAT(bitmap.Add(100L), IsOk());
-  ASSERT_THAT(bitmap.Add(101L), IsOk());
-  ASSERT_THAT(bitmap.Add(105L), IsOk());
-  ASSERT_THAT(bitmap.Add((int64_t{1} << 32) | 200L), IsOk());
-  ASSERT_THAT(bitmap.Add((int64_t{100} << 32) | 300L), IsOk());
+  bitmap.Add(100L);
+  bitmap.Add(101L);
+  bitmap.Add(105L);
+  bitmap.Add((int64_t{1} << 32) | 200L);
+  bitmap.Add((int64_t{100} << 32) | 300L);
 
   ASSERT_EQ(bitmap.Cardinality(), 5);
 }
 
 TEST(RoaringPositionBitmapTest, TestSerializeDeserializeRoundTrip) {
   RoaringPositionBitmap bitmap;
-  ASSERT_THAT(bitmap.Add(10L), IsOk());
-  ASSERT_THAT(bitmap.Add(20L), IsOk());
-  ASSERT_THAT(bitmap.Add((int64_t{1} << 32) | 30L), IsOk());
+  bitmap.Add(10L);
+  bitmap.Add(20L);
+  bitmap.Add((int64_t{1} << 32) | 30L);
 
   auto copy = RoundTripSerialize(bitmap);
   AssertEqualContent(copy, {10L, 20L, (int64_t{1} << 32) | 30L});
@@ -305,32 +304,32 @@ TEST(RoaringPositionBitmapTest, TestSerializeDeserializeRoundTrip) {
 
 TEST(RoaringPositionBitmapTest, TestCopyConstructor) {
   RoaringPositionBitmap bitmap;
-  ASSERT_THAT(bitmap.Add(10L), IsOk());
-  ASSERT_THAT(bitmap.Add((int64_t{2} << 32) | 30L), IsOk());
+  bitmap.Add(10L);
+  bitmap.Add((int64_t{2} << 32) | 30L);
 
   RoaringPositionBitmap copy(bitmap);
 
   AssertEqualContent(copy, {10L, (int64_t{2} << 32) | 30L});
 
   // Copy is independent from source.
-  ASSERT_THAT(copy.Add(99L), IsOk());
-  ASSERT_THAT(bitmap.Contains(99L), HasValue(::testing::Eq(false)));
+  copy.Add(99L);
+  ASSERT_FALSE(bitmap.Contains(99L));
 }
 
 TEST(RoaringPositionBitmapTest, TestCopyAssignment) {
   RoaringPositionBitmap bitmap;
-  ASSERT_THAT(bitmap.Add(10L), IsOk());
-  ASSERT_THAT(bitmap.Add((int64_t{3} << 32) | 40L), IsOk());
+  bitmap.Add(10L);
+  bitmap.Add((int64_t{3} << 32) | 40L);
 
   RoaringPositionBitmap assigned;
-  ASSERT_THAT(assigned.Add(1L), IsOk());
+  assigned.Add(1L);
 
   assigned = bitmap;
   AssertEqualContent(assigned, {10L, (int64_t{3} << 32) | 40L});
 
   // Assignment result is independent from source.
-  ASSERT_THAT(bitmap.Add(200L), IsOk());
-  ASSERT_THAT(assigned.Contains(200L), HasValue(::testing::Eq(false)));
+  bitmap.Add(200L);
+  ASSERT_FALSE(assigned.Contains(200L));
 }
 
 TEST(RoaringPositionBitmapTest, TestSerializeDeserializeEmpty) {
@@ -344,26 +343,24 @@ TEST(RoaringPositionBitmapTest, TestSerializeDeserializeAllContainerBitmap) {
   RoaringPositionBitmap bitmap;
 
   // bitmap 0, container 0 (array - few elements)
-  ASSERT_THAT(bitmap.Add(Position(0, 0, 5)), IsOk());
-  ASSERT_THAT(bitmap.Add(Position(0, 0, 7)), IsOk());
+  bitmap.Add(Position(0, 0, 5));
+  bitmap.Add(Position(0, 0, 7));
 
   // bitmap 0, container 1 (array that can be compressed)
-  ASSERT_THAT(bitmap.AddRange(Position(0, 1, 1), Position(0, 1, 1000)), IsOk());
+  bitmap.AddRange(Position(0, 1, 1), Position(0, 1, 1000));
 
   // bitmap 0, container 2 (bitset - nearly full container)
-  ASSERT_THAT(bitmap.AddRange(Position(0, 2, 1), Position(0, 2, kContainerOffset - 1)),
-              IsOk());
+  bitmap.AddRange(Position(0, 2, 1), Position(0, 2, kContainerOffset - 1));
 
   // bitmap 1, container 0 (array)
-  ASSERT_THAT(bitmap.Add(Position(1, 0, 10)), IsOk());
-  ASSERT_THAT(bitmap.Add(Position(1, 0, 20)), IsOk());
+  bitmap.Add(Position(1, 0, 10));
+  bitmap.Add(Position(1, 0, 20));
 
   // bitmap 1, container 1 (array that can be compressed)
-  ASSERT_THAT(bitmap.AddRange(Position(1, 1, 10), Position(1, 1, 500)), IsOk());
+  bitmap.AddRange(Position(1, 1, 10), Position(1, 1, 500));
 
   // bitmap 1, container 2 (bitset)
-  ASSERT_THAT(bitmap.AddRange(Position(1, 2, 1), Position(1, 2, kContainerOffset - 1)),
-              IsOk());
+  bitmap.AddRange(Position(1, 2, 1), Position(1, 2, kContainerOffset - 1));
 
   ASSERT_TRUE(bitmap.Optimize());
 
@@ -376,10 +373,10 @@ TEST(RoaringPositionBitmapTest, TestSerializeDeserializeAllContainerBitmap) {
 
 TEST(RoaringPositionBitmapTest, TestForEach) {
   RoaringPositionBitmap bitmap;
-  ASSERT_THAT(bitmap.Add(30L), IsOk());
-  ASSERT_THAT(bitmap.Add(10L), IsOk());
-  ASSERT_THAT(bitmap.Add(20L), IsOk());
-  ASSERT_THAT(bitmap.Add((int64_t{1} << 32) | 5L), IsOk());
+  bitmap.Add(30L);
+  bitmap.Add(10L);
+  bitmap.Add(20L);
+  bitmap.Add((int64_t{1} << 32) | 5L);
 
   std::vector<int64_t> positions;
   bitmap.ForEach([&](int64_t pos) { positions.push_back(pos); });
@@ -395,13 +392,13 @@ TEST(RoaringPositionBitmapTest, TestIsEmpty) {
   RoaringPositionBitmap bitmap;
   ASSERT_TRUE(bitmap.IsEmpty());
 
-  ASSERT_THAT(bitmap.Add(10L), IsOk());
+  bitmap.Add(10L);
   ASSERT_FALSE(bitmap.IsEmpty());
 }
 
 TEST(RoaringPositionBitmapTest, TestOptimize) {
   RoaringPositionBitmap bitmap;
-  ASSERT_THAT(bitmap.AddRange(0, 10000), IsOk());
+  bitmap.AddRange(0, 10000);
   size_t size_before = bitmap.SerializedSizeInBytes();
 
   bool changed = bitmap.Optimize();
@@ -427,18 +424,17 @@ TEST(RoaringPositionBitmapTest, TestUnsupportedPositions) {
   RoaringPositionBitmap bitmap;
 
   // Negative position
-  ASSERT_THAT(bitmap.Add(-1L), IsError(ErrorKind::kInvalidArgument));
+  bitmap.Add(-1L);
+  ASSERT_FALSE(bitmap.Contains(-1L));
 
   // Contains with negative position
-  ASSERT_THAT(bitmap.Contains(-1L), IsError(ErrorKind::kInvalidArgument));
 
-  // Position exceeding MAX_POSITION
-  ASSERT_THAT(bitmap.Add(RoaringPositionBitmap::kMaxPosition + 1L),
-              IsError(ErrorKind::kInvalidArgument));
+  // Position exceeding MAX_POSITION - should be silently ignored
+  bitmap.Add(RoaringPositionBitmap::kMaxPosition + 1L);
+  ASSERT_FALSE(bitmap.Contains(RoaringPositionBitmap::kMaxPosition + 1L));
 
-  // Contains with position exceeding MAX_POSITION
-  ASSERT_THAT(bitmap.Contains(RoaringPositionBitmap::kMaxPosition + 1L),
-              IsError(ErrorKind::kInvalidArgument));
+  // Contains with position exceeding MAX_POSITION - should return false
+  ASSERT_FALSE(bitmap.Contains(RoaringPositionBitmap::kMaxPosition + 1L));
 }
 
 TEST(RoaringPositionBitmapTest, TestRandomSparseBitmap) {
@@ -451,7 +447,7 @@ TEST(RoaringPositionBitmapTest, TestRandomSparseBitmap) {
   for (int i = 0; i < 100000; ++i) {
     int64_t pos = dist(rng);
     positions.insert(pos);
-    ASSERT_THAT(bitmap.Add(pos), IsOk());
+    bitmap.Add(pos);
   }
 
   AssertEqual(bitmap, positions);
@@ -462,9 +458,7 @@ TEST(RoaringPositionBitmapTest, TestRandomSparseBitmap) {
                                                      RoaringPositionBitmap::kMaxPosition);
   for (int i = 0; i < 20000; ++i) {
     int64_t pos = lookup_dist(rng2);
-    auto result = bitmap.Contains(pos);
-    ASSERT_THAT(result, IsOk());
-    ASSERT_EQ(result.value(), positions.contains(pos));
+    ASSERT_EQ(bitmap.Contains(pos), positions.contains(pos));
   }
 }
 
@@ -475,7 +469,7 @@ TEST(RoaringPositionBitmapTest, TestRandomDenseBitmap) {
   // Create dense ranges across multiple bitmap keys
   for (int64_t offset : {int64_t{0}, int64_t{2} << 32, int64_t{5} << 32}) {
     for (int64_t i = 0; i < 10000; ++i) {
-      ASSERT_THAT(bitmap.Add(offset + i), IsOk());
+      bitmap.Add(offset + i);
       positions.insert(offset + i);
     }
   }
@@ -493,12 +487,12 @@ TEST(RoaringPositionBitmapTest, TestRandomMixedBitmap) {
   for (int i = 0; i < 50000; ++i) {
     int64_t pos = dist1(rng);
     positions.insert(pos);
-    ASSERT_THAT(bitmap.Add(pos), IsOk());
+    bitmap.Add(pos);
   }
 
   // Dense range in [0, 10000)
   for (int64_t i = 0; i < 10000; ++i) {
-    ASSERT_THAT(bitmap.Add(i), IsOk());
+    bitmap.Add(i);
     positions.insert(i);
   }
 
@@ -507,7 +501,7 @@ TEST(RoaringPositionBitmapTest, TestRandomMixedBitmap) {
   for (int i = 0; i < 5000; ++i) {
     int64_t pos = dist2(rng);
     positions.insert(pos);
-    ASSERT_THAT(bitmap.Add(pos), IsOk());
+    bitmap.Add(pos);
   }
 
   AssertEqual(bitmap, positions);
