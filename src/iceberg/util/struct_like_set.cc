@@ -216,7 +216,7 @@ std::string_view ScalarTypeName(const Scalar& scalar) {
           [](int64_t) -> std::string_view { return "int64"; },
           [](float) -> std::string_view { return "float"; },
           [](double) -> std::string_view { return "double"; },
-          [](std::string_view) -> std::string_view { return "string_view"; },
+          [](std::string_view) -> std::string_view { return "string"; },
           [](const Decimal&) -> std::string_view { return "decimal"; },
           [](const std::shared_ptr<StructLike>&) -> std::string_view { return "struct"; },
           [](const std::shared_ptr<ArrayLike>&) -> std::string_view { return "list"; },
@@ -467,7 +467,8 @@ Result<bool> ScalarEqual(const Scalar& lhs, const Scalar& rhs) {
 }  // namespace
 
 template <bool kValidate>
-StructLikeSet<kValidate>::StructLikeSet(const StructType& type) {
+StructLikeSet<kValidate>::StructLikeSet(const StructType& type, size_t arena_initial_size)
+    : arena_(arena_initial_size) {
   field_types_.reserve(type.fields().size());
   for (const auto& field : type.fields()) {
     field_types_.push_back(field.type());

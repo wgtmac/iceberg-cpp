@@ -47,8 +47,11 @@ namespace iceberg {
 template <bool kValidate = true>
 class ICEBERG_TEMPLATE_CLASS_EXPORT StructLikeSet {
  public:
+  static constexpr size_t kDefaultArenaInitialSize = 64 * 1024;
+
   /// \brief Create a StructLikeSet for the given struct type.
-  explicit StructLikeSet(const StructType& type);
+  explicit StructLikeSet(const StructType& type,
+                         size_t arena_initial_size = kDefaultArenaInitialSize);
 
   ~StructLikeSet();
 
@@ -94,7 +97,7 @@ class ICEBERG_TEMPLATE_CLASS_EXPORT StructLikeSet {
   std::string_view CopyToArena(std::string_view src) const;
 
   std::vector<std::shared_ptr<Type>> field_types_;
-  mutable std::pmr::monotonic_buffer_resource arena_{64 * 1024};
+  mutable std::pmr::monotonic_buffer_resource arena_;
   std::unordered_set<std::unique_ptr<StructLike>, KeyHash, KeyEqual> set_;
 };
 

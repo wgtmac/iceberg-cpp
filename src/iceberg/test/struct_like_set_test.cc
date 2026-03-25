@@ -154,6 +154,17 @@ TEST(StructLikeSetTest, InsertAndContains) {
   EXPECT_THAT(set.Contains(row3), HasValue(::testing::Eq(false)));
 }
 
+TEST(StructLikeSetTest, InsertAndContainsWithCustomArenaInitialSize) {
+  auto type = MakeStructType({{"id", int32()}, {"name", string()}});
+  StructLikeSet set(type, 8);
+
+  std::string name = "alice";
+  SimpleStructLike row({Scalar{int32_t{1}}, Scalar{std::string_view(name)}});
+
+  ASSERT_THAT(set.Insert(row), IsOk());
+  EXPECT_THAT(set.Contains(row), HasValue(::testing::Eq(true)));
+}
+
 TEST(StructLikeSetTest, DuplicateInsert) {
   auto type = MakeStructType({{"id", int32()}});
   StructLikeSet set(type);
