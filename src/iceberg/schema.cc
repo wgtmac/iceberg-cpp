@@ -363,7 +363,7 @@ Result<int32_t> SchemaCache::InitHighestFieldId(const Schema* schema) {
   ICEBERG_ASSIGN_OR_RAISE(auto id_to_field, InitIdToFieldMap(schema));
 
   if (id_to_field.empty()) {
-    return Schema::kInitialColumnId;
+    return kInitialColumnId;
   }
 
   auto max_it = std::ranges::max_element(

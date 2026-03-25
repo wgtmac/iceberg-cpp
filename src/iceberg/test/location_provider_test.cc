@@ -102,9 +102,9 @@ TEST_F(LocationProviderTest, ObjectStorageWithPartition) {
 
   ICEBERG_UNWRAP_OR_FAIL(
       auto mock_spec,
-      PartitionSpec::Make(PartitionSpec::kInitialSpecId,
+      PartitionSpec::Make(kInitialSpecId,
                           {PartitionField(1, 1, "data#1", Transform::Identity())},
-                          PartitionSpec::kInvalidPartitionFieldId + 1));
+                          kInvalidPartitionFieldId + 1));
   PartitionValues mock_partition_data({Literal::String("val#1")});
   ICEBERG_UNWRAP_OR_FAIL(
       auto location,

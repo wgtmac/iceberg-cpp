@@ -486,7 +486,7 @@ TEST_F(EqualityDeleteWriterTest, MetadataAfterClose) {
 
   // Partition spec id must be set
   ASSERT_TRUE(data_file->partition_spec_id.has_value());
-  EXPECT_EQ(data_file->partition_spec_id.value(), PartitionSpec::kInitialSpecId);
+  EXPECT_EQ(data_file->partition_spec_id.value(), kInitialSpecId);
 
   // Equality field ids must be set
   ASSERT_EQ(data_file->equality_ids.size(), 2);

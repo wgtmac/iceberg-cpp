@@ -63,12 +63,12 @@ class UpdatePartitionSpecTest : public ::testing::TestWithParam<int8_t> {
     // Create unpartitioned and partitioned specs matching Java test
     ICEBERG_UNWRAP_OR_FAIL(
         auto unpartitioned_spec,
-        PartitionSpec::Make(PartitionSpec::kInitialSpecId, std::vector<PartitionField>{},
-                            PartitionSpec::kLegacyPartitionDataIdStart - 1));
+        PartitionSpec::Make(kInitialSpecId, std::vector<PartitionField>{},
+                            kLegacyPartitionDataIdStart - 1));
     ICEBERG_UNWRAP_OR_FAIL(
         partitioned_spec_,
         PartitionSpec::Make(
-            PartitionSpec::kInitialSpecId,
+            kInitialSpecId,
             std::vector<PartitionField>{
                 PartitionField(3, 1000, "category", Transform::Identity()),
                 PartitionField(2, 1001, "ts_day", Transform::Day()),
@@ -131,7 +131,7 @@ class UpdatePartitionSpecTest : public ::testing::TestWithParam<int8_t> {
     metadata->default_spec_id = spec->spec_id();
     metadata->last_partition_id = spec->last_assigned_field_id();
     metadata->current_snapshot_id = kInvalidSnapshotId;
-    metadata->default_sort_order_id = SortOrder::kUnsortedOrderId;
+    metadata->default_sort_order_id = kUnsortedOrderId;
     metadata->sort_orders.push_back(SortOrder::Unsorted());
     metadata->next_row_id = TableMetadata::kInitialRowId;
     metadata->partition_specs.push_back(std::move(spec));
@@ -160,7 +160,7 @@ class UpdatePartitionSpecTest : public ::testing::TestWithParam<int8_t> {
   // Helper to create an expected partition spec
   std::shared_ptr<PartitionSpec> MakeExpectedSpec(
       const std::vector<PartitionField>& fields, int32_t last_assigned_field_id) {
-    auto spec_result = PartitionSpec::Make(PartitionSpec::kInitialSpecId, fields,
+    auto spec_result = PartitionSpec::Make(kInitialSpecId, fields,
                                            last_assigned_field_id);
     if (!spec_result.has_value()) {
       ADD_FAILURE() << "Failed to create expected spec: " << spec_result.error().message;
@@ -535,7 +535,7 @@ TEST_P(UpdatePartitionSpecTest, TestAddDeletedName) {
     ICEBERG_UNWRAP_OR_FAIL(
         auto expected_spec,
         PartitionSpec::Make(
-            PartitionSpec::kInitialSpecId,
+            kInitialSpecId,
             std::vector<PartitionField>{
                 PartitionField(3, 1000, "category", Transform::Identity()),
                 PartitionField(2, 1001, "ts_day", Transform::Day()),
@@ -547,7 +547,7 @@ TEST_P(UpdatePartitionSpecTest, TestAddDeletedName) {
     ICEBERG_UNWRAP_OR_FAIL(
         auto expected_spec,
         PartitionSpec::Make(
-            PartitionSpec::kInitialSpecId,
+            kInitialSpecId,
             std::vector<PartitionField>{
                 PartitionField(3, 1000, "category", Transform::Identity()),
                 PartitionField(2, 1001, "ts_day", Transform::Day())},
@@ -757,7 +757,7 @@ TEST_P(UpdatePartitionSpecTest, TestRemoveAndAddMultiTimes) {
   } else {
     ICEBERG_UNWRAP_OR_FAIL(
         auto expected_spec,
-        PartitionSpec::Make(PartitionSpec::kInitialSpecId,
+        PartitionSpec::Make(kInitialSpecId,
                             std::vector<PartitionField>{
                                 PartitionField(2, 1000, "ts_date", Transform::Day()),
                                 PartitionField(2, 1001, "__ts_date", Transform::Month())},

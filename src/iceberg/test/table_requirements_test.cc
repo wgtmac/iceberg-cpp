@@ -50,11 +50,11 @@ std::unique_ptr<TableMetadata> CreateBaseMetadata(
   metadata->last_sequence_number = 0;
   metadata->last_updated_ms = TimePointMs{std::chrono::milliseconds(1000)};
   metadata->last_column_id = 0;
-  metadata->current_schema_id = Schema::kInitialSchemaId;
-  metadata->default_spec_id = PartitionSpec::kInitialSpecId;
+  metadata->current_schema_id = kInitialSchemaId;
+  metadata->default_spec_id = kInitialSpecId;
   metadata->last_partition_id = 0;
   metadata->current_snapshot_id = kInvalidSnapshotId;
-  metadata->default_sort_order_id = SortOrder::kUnsortedOrderId;
+  metadata->default_sort_order_id = kUnsortedOrderId;
   metadata->next_row_id = TableMetadata::kInitialRowId;
   return metadata;
 }
@@ -491,11 +491,11 @@ TEST(TableRequirementsTest, SetDefaultPartitionSpec) {
 
 TEST(TableRequirementsTest, SetDefaultPartitionSpecFailure) {
   auto metadata = CreateBaseMetadata();
-  metadata->default_spec_id = PartitionSpec::kInitialSpecId;
+  metadata->default_spec_id = kInitialSpecId;
 
   std::vector<std::unique_ptr<TableUpdate>> updates;
   updates.push_back(
-      std::make_unique<table::SetDefaultPartitionSpec>(PartitionSpec::kInitialSpecId));
+      std::make_unique<table::SetDefaultPartitionSpec>(kInitialSpecId));
 
   auto result = TableRequirements::ForUpdateTable(*metadata, updates);
   ASSERT_THAT(result, IsOk());
@@ -504,7 +504,7 @@ TEST(TableRequirementsTest, SetDefaultPartitionSpecFailure) {
 
   // Create updated metadata with different default_spec_id
   auto updated = CreateBaseMetadata();
-  updated->default_spec_id = PartitionSpec::kInitialSpecId + 1;
+  updated->default_spec_id = kInitialSpecId + 1;
 
   // Find and validate the AssertDefaultSpecID requirement
   for (const auto& req : requirements) {
@@ -801,11 +801,11 @@ TEST(TableRequirementsTest, SetDefaultSortOrder) {
 
 TEST(TableRequirementsTest, SetDefaultSortOrderFailure) {
   auto metadata = CreateBaseMetadata();
-  metadata->default_sort_order_id = SortOrder::kUnsortedOrderId;
+  metadata->default_sort_order_id = kUnsortedOrderId;
 
   std::vector<std::unique_ptr<TableUpdate>> updates;
   updates.push_back(
-      std::make_unique<table::SetDefaultSortOrder>(SortOrder::kUnsortedOrderId));
+      std::make_unique<table::SetDefaultSortOrder>(kUnsortedOrderId));
 
   auto result = TableRequirements::ForUpdateTable(*metadata, updates);
   ASSERT_THAT(result, IsOk());
@@ -814,7 +814,7 @@ TEST(TableRequirementsTest, SetDefaultSortOrderFailure) {
 
   // Create updated metadata with different default_sort_order_id
   auto updated = CreateBaseMetadata();
-  updated->default_sort_order_id = SortOrder::kUnsortedOrderId + 1;
+  updated->default_sort_order_id = kUnsortedOrderId + 1;
 
   // Find and validate the AssertDefaultSortOrderID requirement
   for (const auto& req : requirements) {

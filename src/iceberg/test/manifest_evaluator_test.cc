@@ -70,7 +70,7 @@ class ManifestEvaluatorTest : public ::testing::Test {
 
   std::vector<PartitionField> BuildIdentityFields() {
     std::vector<PartitionField> fields;
-    int32_t partition_field_id = PartitionSpec::kLegacyPartitionDataIdStart;
+    int32_t partition_field_id = kLegacyPartitionDataIdStart;
     auto add_field = [&](int32_t source_id, std::string name) {
       fields.emplace_back(source_id, partition_field_id++, std::move(name),
                           Transform::Identity());

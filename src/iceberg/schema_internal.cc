@@ -310,7 +310,7 @@ std::unique_ptr<Schema> FromStructType(StructType&& struct_type,
   for (auto& field : struct_type.fields()) {
     fields.emplace_back(std::move(field));
   }
-  auto schema_id = schema_id_opt.value_or(Schema::kInitialSchemaId);
+  auto schema_id = schema_id_opt.value_or(kInitialSchemaId);
   return std::make_unique<Schema>(std::move(fields), schema_id);
 }
 

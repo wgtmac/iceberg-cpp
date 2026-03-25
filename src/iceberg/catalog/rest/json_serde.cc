@@ -381,7 +381,7 @@ Result<CreateTableRequest> CreateTableRequestFromJson(const nlohmann::json& json
                             GetJsonValue<nlohmann::json>(json, kPartitionSpec));
     ICEBERG_ASSIGN_OR_RAISE(request.partition_spec,
                             PartitionSpecFromJson(request.schema, partition_spec,
-                                                  PartitionSpec::kInitialSpecId));
+                                                  kInitialSpecId));
   }
   if (json.contains(kWriteOrder)) {
     ICEBERG_ASSIGN_OR_RAISE(auto sort_order,

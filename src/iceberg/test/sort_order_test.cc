@@ -197,16 +197,16 @@ TEST_F(SortOrderTest, MakeInvalidSortOrderEmptyFields) {
 }
 
 TEST_F(SortOrderTest, MakeInvalidSortOrderUnsortedId) {
-  auto sort_order = SortOrder::Make(*schema_, SortOrder::kUnsortedOrderId,
+  auto sort_order = SortOrder::Make(*schema_, kUnsortedOrderId,
                                     std::vector<SortField>{*sort_field1_});
   EXPECT_THAT(sort_order, IsError(ErrorKind::kInvalidArgument));
   EXPECT_THAT(sort_order,
               HasErrorMessage(std::format("{} is reserved for unsorted sort order",
-                                          SortOrder::kUnsortedOrderId)));
+                                          kUnsortedOrderId)));
 }
 
 TEST_F(SortOrderTest, MakeValidUnsortedSortOrder) {
-  ICEBERG_UNWRAP_OR_FAIL(auto sort_order, SortOrder::Make(SortOrder::kUnsortedOrderId,
+  ICEBERG_UNWRAP_OR_FAIL(auto sort_order, SortOrder::Make(kUnsortedOrderId,
                                                           std::vector<SortField>{}));
   ASSERT_NE(sort_order, nullptr);
 
