@@ -41,9 +41,10 @@ namespace iceberg {
 /// significant 4 bytes. For each key, a 32-bit Roaring bitmap is
 /// maintained to store positions for that key.
 ///
-/// \note This class is used to represent deletion vectors.  The Puffin puffin reader/write handle adding the additional required framing (length prefix, magic, magic bytes, CRC-32) for  `deletion-vector-v1` persistence.  
-/// bytes, CRC-32) is handled by the Puffin writer/reader layer, not
-/// this class.
+
+/// \note This class is used to represent deletion vectors.  The Puffin puffin
+/// reader/write handle adding the additional required framing (length prefix, magic,
+/// magic bytes, CRC-32) for  `deletion-vector-v1` persistence.
 class ICEBERG_EXPORT RoaringPositionBitmap {
  public:
   /// \brief Maximum supported position (aligned with the Java implementation).
