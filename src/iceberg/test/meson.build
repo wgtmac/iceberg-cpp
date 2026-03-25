@@ -90,6 +90,7 @@ iceberg_tests = {
             'endian_test.cc',
             'formatter_test.cc',
             'location_util_test.cc',
+            'roaring_position_bitmap_test.cc',
             'string_util_test.cc',
             'transform_util_test.cc',
             'truncate_util_test.cc',

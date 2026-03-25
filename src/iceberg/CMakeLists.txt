@@ -25,6 +25,7 @@ set(ICEBERG_SOURCES
     data/position_delete_writer.cc
     data/writer.cc
     delete_file_index.cc
+    deletes/roaring_position_bitmap.cc
     expression/aggregate.cc
     expression/binder.cc
     expression/evaluator.cc
@@ -166,6 +167,7 @@ iceberg_install_all_headers(iceberg)
 
 add_subdirectory(catalog)
 add_subdirectory(data)
+add_subdirectory(deletes)
 add_subdirectory(expression)
 add_subdirectory(manifest)
 add_subdirectory(puffin)
