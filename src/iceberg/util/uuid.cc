@@ -116,20 +116,14 @@ Uuid::Uuid(std::array<uint8_t, kLength> data) : data_(std::move(data)) {}
 
 Uuid Uuid::GenerateV4() {
   static std::random_device rd;
-  static std::mt19937 gen(rd());
-  static std::uniform_int_distribution<uint64_t> distrib(
-      std::numeric_limits<uint64_t>::min(), std::numeric_limits<uint64_t>::max());
   std::array<uint8_t, 16> uuid;
 
-  // Generate two random 64-bit integers
-  uint64_t high_bits = distrib(gen);
-  uint64_t low_bits = distrib(gen);
-
-  // Combine them into a uint128_t
-  uint128_t random_128_bit_number = (static_cast<uint128_t>(high_bits) << 64) | low_bits;
-
-  // Copy the bytes into the uuid array
-  std::memcpy(uuid.data(), &random_128_bit_number, 16);
+  // Generate 16 random bytes using std::random_device directly.
+  // std::random_device::operator() returns a 32-bit unsigned integer.
+  for (size_t i = 0; i < 16; i += 4) {
+    uint32_t val = rd();
+    std::memcpy(uuid.data() + i, &val, 4);
+  }
 
   // Set magic numbers for a "version 4" (pseudorandom) UUID and variant,
   // see https://datatracker.ietf.org/doc/html/rfc9562#name-uuid-version-4
@@ -161,17 +155,15 @@ Uuid Uuid::GenerateV7(uint64_t unix_ts_ms) {
   uuid[4] = (unix_ts_ms >> 8) & 0xFF;
   uuid[5] = unix_ts_ms & 0xFF;
 
-  // Generate random bytes for the remaining fields
+  // Generate random bytes for the remaining fields (10 bytes starting from index 6)
+  // std::random_device::operator() returns a 32-bit unsigned integer.
   static std::random_device rd;
-  static std::mt19937 gen(rd());
-  static std::uniform_int_distribution<uint16_t> distrib(
-      std::numeric_limits<uint16_t>::min(), std::numeric_limits<uint16_t>::max());
-
-  // Note: uint8_t is invalid for uniform_int_distribution on Windows
   for (size_t i = 6; i < 16; i += 2) {
-    auto rand = static_cast<uint16_t>(distrib(gen));
-    uuid[i] = (rand >> 8) & 0xFF;
-    uuid[i + 1] = rand & 0xFF;
+    uint32_t val = rd();
+    uuid[i] = (val >> 8) & 0xFF;
+    if (i + 1 < 16) {
+      uuid[i + 1] = val & 0xFF;
+    }
   }
 
   // Set magic numbers for a "version 7" (pseudorandom) UUID and variant,
