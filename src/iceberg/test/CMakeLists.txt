@@ -125,6 +125,9 @@ add_iceberg_test(util_test
 
 add_iceberg_test(roaring_test SOURCES roaring_test.cc)
 
+add_executable(snapshot_summary_benchmark snapshot_summary_benchmark.cc)
+target_link_libraries(snapshot_summary_benchmark PRIVATE iceberg_static)
+
 if(ICEBERG_BUILD_BUNDLE)
   add_iceberg_test(avro_test
                    USE_BUNDLE
