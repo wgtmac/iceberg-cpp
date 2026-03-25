@@ -19,9 +19,14 @@
 
 #include "iceberg/parquet/parquet_reader.h"
 
+#include <charconv>
+#include <cstring>
 #include <numeric>
+#include <optional>
+#include <string>
 
 #include <arrow/c/bridge.h>
+#include <arrow/extension_type.h>
 #include <arrow/memory_pool.h>
 #include <arrow/record_batch.h>
 #include <arrow/result.h>
@@ -35,18 +40,147 @@
 #include "iceberg/arrow/arrow_fs_file_io_internal.h"
 #include "iceberg/arrow/arrow_status_internal.h"
 #include "iceberg/arrow/metadata_column_util_internal.h"
+#include "iceberg/constants.h"
 #include "iceberg/parquet/parquet_data_util_internal.h"
 #include "iceberg/parquet/parquet_register.h"
 #include "iceberg/parquet/parquet_schema_util_internal.h"
 #include "iceberg/result.h"
+#include "iceberg/schema.h"
 #include "iceberg/schema_internal.h"
 #include "iceberg/schema_util.h"
+#include "iceberg/type.h"
 #include "iceberg/util/checked_cast.h"
 #include "iceberg/util/macros.h"
 
 namespace iceberg::parquet {
 
 namespace {
+
+constexpr int32_t kUnknownFieldId = -1;
+
+int32_t GetFieldId(const std::shared_ptr<::arrow::Field>& field) {
+  if (!field->metadata()) {
+    return kUnknownFieldId;
+  }
+
+  int idx = field->metadata()->FindKey(kParquetFieldIdKey);
+  if (idx == -1) {
+    return kUnknownFieldId;
+  }
+
+  std::string value = field->metadata()->value(idx);
+  int32_t field_id = kUnknownFieldId;
+  std::from_chars(value.data(), value.data() + value.size(), field_id);
+
+  return field_id;
+}
+
+// Forward declaration
+Result<std::shared_ptr<Type>> ConvertArrowType(
+    const std::shared_ptr<::arrow::DataType>& type);
+
+Result<std::unique_ptr<SchemaField>> ToSchemaField(
+    const std::shared_ptr<::arrow::Field>& field) {
+  ICEBERG_ASSIGN_OR_RAISE(auto field_type, ConvertArrowType(field->type()));
+
+  auto field_id = GetFieldId(field);
+  return std::make_unique<SchemaField>(field_id, field->name(), std::move(field_type),
+                                       field->nullable());
+}
+
+Result<std::shared_ptr<Type>> ConvertArrowType(
+    const std::shared_ptr<::arrow::DataType>& type) {
+  switch (type->id()) {
+    case ::arrow::Type::BOOL:
+      return iceberg::boolean();
+    case ::arrow::Type::INT32:
+      return iceberg::int32();
+    case ::arrow::Type::INT64:
+      return iceberg::int64();
+    case ::arrow::Type::FLOAT:
+      return iceberg::float32();
+    case ::arrow::Type::DOUBLE:
+      return iceberg::float64();
+    case ::arrow::Type::DECIMAL128: {
+      const auto& decimal_type = static_cast<const ::arrow::Decimal128Type&>(*type);
+      return iceberg::decimal(decimal_type.precision(), decimal_type.scale());
+    }
+    case ::arrow::Type::DATE32:
+      return iceberg::date();
+    case ::arrow::Type::TIME64: {
+      const auto& time_type = static_cast<const ::arrow::Time64Type&>(*type);
+      if (time_type.unit() != ::arrow::TimeUnit::MICRO) {
+        return InvalidSchema("Unsupported time unit for Arrow time type: {}",
+                             static_cast<int>(time_type.unit()));
+      }
+      return iceberg::time();
+    }
+    case ::arrow::Type::TIMESTAMP: {
+      const auto& timestamp_type = static_cast<const ::arrow::TimestampType&>(*type);
+      if (timestamp_type.unit() != ::arrow::TimeUnit::MICRO) {
+        return InvalidSchema("Unsupported time unit for Arrow timestamp type: {}",
+                             static_cast<int>(timestamp_type.unit()));
+      }
+      if (timestamp_type.timezone().empty()) {
+        return iceberg::timestamp();
+      } else {
+        return iceberg::timestamp_tz();
+      }
+    }
+    case ::arrow::Type::STRING:
+    case ::arrow::Type::LARGE_STRING:
+      return iceberg::string();
+    case ::arrow::Type::BINARY:
+    case ::arrow::Type::LARGE_BINARY:
+      return iceberg::binary();
+    case ::arrow::Type::FIXED_SIZE_BINARY: {
+      const auto& fixed_type = static_cast<const ::arrow::FixedSizeBinaryType&>(*type);
+      return iceberg::fixed(fixed_type.byte_width());
+    }
+    case ::arrow::Type::EXTENSION: {
+      const auto& ext_type = static_cast<const ::arrow::ExtensionType&>(*type);
+      if (ext_type.extension_name() == "arrow.uuid") {
+        return iceberg::uuid();
+      }
+      return ConvertArrowType(ext_type.storage_type());
+    }
+    case ::arrow::Type::STRUCT: {
+      const auto& struct_type = static_cast<const ::arrow::StructType&>(*type);
+      std::vector<SchemaField> fields;
+      fields.reserve(struct_type.num_fields());
+      for (const auto& field : struct_type.fields()) {
+        ICEBERG_ASSIGN_OR_RAISE(auto schema_field, ToSchemaField(field));
+        fields.emplace_back(std::move(*schema_field));
+      }
+      return std::make_shared<StructType>(std::move(fields));
+    }
+    case ::arrow::Type::LIST: {
+      const auto& list_type = static_cast<const ::arrow::ListType&>(*type);
+      ICEBERG_ASSIGN_OR_RAISE(auto element_field, ToSchemaField(list_type.value_field()));
+      return std::make_shared<ListType>(std::move(*element_field));
+    }
+    case ::arrow::Type::MAP: {
+      const auto& map_type = static_cast<const ::arrow::MapType&>(*type);
+      ICEBERG_ASSIGN_OR_RAISE(auto key_field, ToSchemaField(map_type.key_field()));
+      ICEBERG_ASSIGN_OR_RAISE(auto value_field, ToSchemaField(map_type.item_field()));
+      return std::make_shared<MapType>(std::move(*key_field), std::move(*value_field));
+    }
+    default:
+      return InvalidSchema("Unsupported Arrow type: {}", type->ToString());
+  }
+}
+
+Result<std::unique_ptr<Schema>> InferIcebergSchema(
+    const std::shared_ptr<::arrow::Schema>& schema, std::optional<int32_t> schema_id) {
+  std::vector<SchemaField> fields;
+  fields.reserve(schema->num_fields());
+  for (const auto& field : schema->fields()) {
+    ICEBERG_ASSIGN_OR_RAISE(auto schema_field, ToSchemaField(field));
+    fields.emplace_back(std::move(*schema_field));
+  }
+  auto id = schema_id.value_or(Schema::kInitialSchemaId);
+  return std::make_unique<Schema>(std::move(fields), id);
+}
 
 Result<std::shared_ptr<::arrow::io::RandomAccessFile>> OpenInputStream(
     const ReaderOptions& options) {
@@ -113,12 +247,7 @@ class ParquetReader::Impl {
  public:
   // Open the Parquet reader with the given options
   Status Open(const ReaderOptions& options) {
-    if (options.projection == nullptr) {
-      return InvalidArgument("Projected schema is required by Parquet reader");
-    }
-
     split_ = options.split;
-    read_schema_ = options.projection;
 
     // Prepare reader properties
     ::parquet::ReaderProperties reader_properties(pool_);
@@ -133,6 +262,16 @@ class ParquetReader::Impl {
         ::parquet::ParquetFileReader::Open(input_stream_, reader_properties);
     ICEBERG_ARROW_RETURN_NOT_OK(::parquet::arrow::FileReader::Make(
         pool_, std::move(file_reader), arrow_reader_properties, &reader_));
+
+    if (options.projection != nullptr) {
+      read_schema_ = options.projection;
+    } else {
+      std::shared_ptr<::arrow::Schema> arrow_schema;
+      ICEBERG_ARROW_RETURN_NOT_OK(reader_->GetSchema(&arrow_schema));
+      ICEBERG_ASSIGN_OR_RAISE(auto schema,
+                              InferIcebergSchema(arrow_schema, std::nullopt));
+      read_schema_ = std::move(schema);
+    }
 
     // Project read schema onto the Parquet file schema
     ICEBERG_ASSIGN_OR_RAISE(projection_, BuildProjection(reader_.get(), *read_schema_));

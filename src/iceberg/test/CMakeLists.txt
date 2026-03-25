@@ -166,6 +166,7 @@ if(ICEBERG_BUILD_BUNDLE)
                    USE_BUNDLE
                    SOURCES
                    parquet_data_test.cc
+                   parquet_reader_no_projection_test.cc
                    parquet_schema_test.cc
                    parquet_test.cc)
 
