@@ -15,4 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-install_headers(['roaring_position_bitmap.h'], subdir: 'iceberg/deletes')
+install_headers(
+    ['position_delete_index.h', 'roaring_position_bitmap.h'],
+    subdir: 'iceberg/deletes',
+)
