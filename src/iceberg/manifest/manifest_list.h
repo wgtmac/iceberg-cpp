@@ -230,7 +230,9 @@ struct ICEBERG_EXPORT ManifestFile {
       kFirstRowIdFieldId, "first_row_id", int64(),
       "Starting row ID to assign to new rows in ADDED data files");
 
-  bool operator==(const ManifestFile& other) const = default;
+  bool operator==(const ManifestFile& other) const {
+    return manifest_path == other.manifest_path;
+  }
 
   static const std::shared_ptr<StructType>& Type();
 };
@@ -272,3 +274,12 @@ ICEBERG_EXPORT inline constexpr Result<ManifestContent> ManifestContentFromStrin
 }
 
 }  // namespace iceberg
+
+namespace std {
+template <>
+struct hash<iceberg::ManifestFile> {
+  size_t operator()(const iceberg::ManifestFile& manifest_file) const {
+    return std::hash<std::string>{}(manifest_file.manifest_path);
+  }
+};
+}  // namespace std
