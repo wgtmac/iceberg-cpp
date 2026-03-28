@@ -19,9 +19,32 @@
 
 # Documentation
 
-To build the documentation:
+The website is built with [MkDocs](https://www.mkdocs.org/) (Material theme) and [Doxygen](https://www.doxygen.nl/) for API docs, hosted at https://cpp.iceberg.apache.org/.
 
-1. Install [Doxygen](https://www.doxygen.nl/).
-2. From this directory, run `doxygen`.
+## Prerequisites
 
-The output will be in `./build/html`.
+- Python 3 with pip
+- [Doxygen](https://www.doxygen.nl/)
+
+## Build
+
+From the project root:
+
+```bash
+make install-deps    # Install Python dependencies
+make build-api-docs  # Generate API docs with Doxygen
+make build-docs      # Build MkDocs site
+make all             # Build everything
+```
+
+## Local Preview
+
+```bash
+make serve-docs      # Serve at http://127.0.0.1:8000
+```
+
+## Clean
+
+```bash
+make clean-docs      # Remove generated files
+```

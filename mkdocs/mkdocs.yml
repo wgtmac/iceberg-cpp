@@ -15,19 +15,22 @@
 # specific language governing permissions and limitations
 # under the License.
 site_name: Iceberg C++
+site_description: C++ implementation of Apache Iceberg, an open table format for large analytic datasets
 site_url: https://cpp.iceberg.apache.org/
 repo_url: "https://github.com/apache/iceberg-cpp"
 repo_name: "apache/iceberg-cpp"
 
 theme:
   name: material
-  logo: assert/iceberg-logo-icon.png
-  favicon: assert/iceberg-logo-icon.png
+  logo: assets/iceberg-logo-icon.png
+  favicon: assets/iceberg-logo-icon.png
   features:
-    - navigation.expand
     - navigation.tabs
     - navigation.tabs.sticky
+    - navigation.instant
+    - navigation.sections
     - content.code.copy
+    - toc.integrate
   palette:
     - scheme: default
       toggle:
@@ -47,8 +50,13 @@ markdown_extensions:
       permalink: true
 
 nav:
-  - Contributing: index.md
-  - Releases: releases.md
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Contributing: contributing.md
+  - Releases:
+    - Release History: releases.md
+    - Release Process: release-process.md
+    - Verify a Release Candidate: verify-rc.md
   - API Documentation: api/index.html
 
 extra:
