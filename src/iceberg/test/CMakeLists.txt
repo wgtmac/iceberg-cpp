@@ -118,6 +118,7 @@ add_iceberg_test(util_test
                  roaring_position_bitmap_test.cc
                  position_delete_index_test.cc
                  string_util_test.cc
+                 struct_like_set_test.cc
                  transform_util_test.cc
                  truncate_util_test.cc
                  url_encoder_test.cc
