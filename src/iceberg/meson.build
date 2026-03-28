@@ -43,6 +43,7 @@ iceberg_sources = files(
     'arrow_c_data_guard_internal.cc',
     'catalog/memory/in_memory_catalog.cc',
     'delete_file_index.cc',
+    'deletes/position_delete_index.cc',
     'deletes/roaring_position_bitmap.cc',
     'expression/aggregate.cc',
     'expression/binder.cc',

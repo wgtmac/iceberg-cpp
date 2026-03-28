@@ -26,6 +26,7 @@ set(ICEBERG_SOURCES
     data/writer.cc
     delete_file_index.cc
     deletes/roaring_position_bitmap.cc
+    deletes/position_delete_index.cc
     expression/aggregate.cc
     expression/binder.cc
     expression/evaluator.cc
