@@ -21,6 +21,7 @@
 
 [![Slack](https://img.shields.io/badge/chat-on%20Slack-brightgreen.svg)](https://apache-iceberg.slack.com/)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/apache/iceberg-cpp)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 # Apache Iceberg™ C++
 
@@ -28,40 +29,41 @@ C++ implementation of [Apache Iceberg™](https://iceberg.apache.org/).
 
 ## Requirements
 
-- CMake 3.25 or higher
+**Required:**
+
 - C++23 compliant compiler (GCC 14+, Clang 16+, MSVC 2022+)
+- CMake 3.25+ or Meson 1.5+
+- [Ninja](https://ninja-build.org/) (recommended build backend)
 
-## Customizing Dependency URLs
+**Optional:**
 
-If you experience network issues when downloading dependencies, you can customize the download URLs using environment variables.
+- Python 3 and [pre-commit](https://pre-commit.com/) (for linting)
 
-The following environment variables can be set to customize dependency URLs:
-
-- `ICEBERG_ARROW_URL`: Apache Arrow tarball URL
-- `ICEBERG_AVRO_URL`: Apache Avro tarball URL
-- `ICEBERG_AVRO_GIT_URL`: Apache Avro git repository URL
-- `ICEBERG_NANOARROW_URL`: Nanoarrow tarball URL
-- `ICEBERG_CROARING_URL`: CRoaring tarball URL
-- `ICEBERG_NLOHMANN_JSON_URL`: nlohmann-json tarball URL
-- `ICEBERG_CPR_URL`: cpr tarball URL
-
-Example usage:
+## Quick Start
 
 ```bash
-export ICEBERG_ARROW_URL="https://your-mirror.com/apache-arrow-22.0.0.tar.gz"
-cmake -S . -B build
+git clone https://github.com/apache/iceberg-cpp.git
+cd iceberg-cpp
+cmake -S . -B build -G Ninja
+cmake --build build
+ctest --test-dir build --output-on-failure
 ```
 
-## Build
+## Build with CMake
 
-### Build, Run Test and Install Core Libraries
+### Build, Run Tests and Install Core Libraries
 
 ```bash
-cd iceberg-cpp
 cmake -S . -B build -G Ninja -DCMAKE_INSTALL_PREFIX=/path/to/install -DICEBERG_BUILD_STATIC=ON -DICEBERG_BUILD_SHARED=ON
 cmake --build build
 ctest --test-dir build --output-on-failure
 cmake --install build
+```
+
+To run a specific test suite:
+
+```bash
+ctest --test-dir build -R schema_test --output-on-failure
 ```
 
 ### Build and Install Iceberg Bundle Library
@@ -84,20 +86,74 @@ ctest --test-dir build --output-on-failure
 cmake --install build
 ```
 
+### CMake Build Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `ICEBERG_BUILD_STATIC` | `ON` | Build static library |
+| `ICEBERG_BUILD_SHARED` | `OFF` | Build shared library |
+| `ICEBERG_BUILD_TESTS` | `ON` | Build tests |
+| `ICEBERG_BUILD_BUNDLE` | `ON` | Build the battery-included library |
+| `ICEBERG_BUILD_REST` | `ON` | Build REST catalog client |
+| `ICEBERG_BUILD_REST_INTEGRATION_TESTS` | `OFF` | Build REST catalog integration tests |
+| `ICEBERG_ENABLE_ASAN` | `OFF` | Enable Address Sanitizer |
+| `ICEBERG_ENABLE_UBSAN` | `OFF` | Enable Undefined Behavior Sanitizer |
+
+## Build with Meson
+
+```bash
+meson setup builddir
+meson compile -C builddir
+meson test -C builddir --timeout-multiplier 0
+```
+
+Meson provides built-in equivalents for several CMake options:
+
+- `--default-library=<shared|static|both>` instead of `ICEBERG_BUILD_STATIC` / `ICEBERG_BUILD_SHARED`
+- `-Db_sanitize=address,undefined` instead of `ICEBERG_ENABLE_ASAN` / `ICEBERG_ENABLE_UBSAN`
+- `--libdir`, `--bindir`, `--includedir` for install directories
+
+Meson-specific options (configured via `-D<option>=<value>`):
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `rest` | `enabled` | Build REST catalog client |
+| `rest_integration_test` | `disabled` | Build integration test for REST catalog |
+| `tests` | `enabled` | Build tests |
+
 ### Build Examples
 
 After installing the core libraries, you can build the examples:
 
 ```bash
-cd iceberg-cpp/example
+cd example
 cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH=/path/to/install
 cmake --build build
 ```
 
-If you are using provided Apache Arrow, you need to include `/path/to/arrow` in `CMAKE_PREFIX_PATH` as below.
+If you are using provided Apache Arrow, include `/path/to/arrow` in `CMAKE_PREFIX_PATH`:
 
 ```bash
 cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH="/path/to/install;/path/to/arrow"
+```
+
+## Customizing Dependency URLs
+
+If you experience network issues when downloading dependencies, you can customize the download URLs using environment variables:
+
+- `ICEBERG_ARROW_URL`: Apache Arrow tarball URL
+- `ICEBERG_AVRO_URL`: Apache Avro tarball URL
+- `ICEBERG_AVRO_GIT_URL`: Apache Avro git repository URL
+- `ICEBERG_NANOARROW_URL`: Nanoarrow tarball URL
+- `ICEBERG_CROARING_URL`: CRoaring tarball URL
+- `ICEBERG_NLOHMANN_JSON_URL`: nlohmann-json tarball URL
+- `ICEBERG_CPR_URL`: cpr tarball URL
+
+Example:
+
+```bash
+export ICEBERG_ARROW_URL="https://your-mirror.com/apache-arrow-22.0.0.tar.gz"
+cmake -S . -B build
 ```
 
 ## Contribute
@@ -116,7 +172,7 @@ In addition, contributors using AI-assisted tools must follow the documented gui
 
 Install the python package `pre-commit` and run once `pre-commit install`.
 
-```
+```bash
 pip install pre-commit
 pre-commit install
 ```
@@ -129,7 +185,7 @@ We provide Dev Container configuration file templates.
 
 To use a Dev Container as your development environment, follow the steps below, then select `Dev Containers: Reopen in Container` from VS Code's Command Palette.
 
-```
+```bash
 cd .devcontainer
 cp Dockerfile.template Dockerfile
 cp devcontainer.json.template devcontainer.json
