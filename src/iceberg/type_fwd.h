@@ -221,6 +221,10 @@ class UpdateSnapshotReference;
 class UpdateSortOrder;
 class UpdateStatistics;
 
+/// \brief Delete indexes.
+class DeleteLoader;
+class PositionDeleteIndex;
+
 /// ----------------------------------------------------------------------------
 /// TODO: Forward declarations below are not added yet.
 /// ----------------------------------------------------------------------------

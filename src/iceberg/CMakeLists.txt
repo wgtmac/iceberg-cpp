@@ -21,6 +21,7 @@ set(ICEBERG_SOURCES
     arrow_c_data_guard_internal.cc
     catalog/memory/in_memory_catalog.cc
     data/data_writer.cc
+    data/delete_loader.cc
     data/equality_delete_writer.cc
     data/position_delete_writer.cc
     data/writer.cc

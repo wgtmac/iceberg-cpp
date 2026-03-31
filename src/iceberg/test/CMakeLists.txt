@@ -194,7 +194,11 @@ if(ICEBERG_BUILD_BUNDLE)
                    update_sort_order_test.cc
                    update_statistics_test.cc)
 
-  add_iceberg_test(data_writer_test USE_BUNDLE SOURCES data_writer_test.cc)
+  add_iceberg_test(data_test
+                   USE_BUNDLE
+                   SOURCES
+                   data_writer_test.cc
+                   delete_loader_test.cc)
 
 endif()
 
