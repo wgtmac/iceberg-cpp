@@ -193,6 +193,20 @@ TEST_F(DeleteLoaderTest, LoadPositionDeletesFiltersByDataFilePath) {
   ASSERT_TRUE(result_none.value().IsEmpty());
 }
 
+TEST_F(DeleteLoaderTest, LoadPositionDeletesSkipsMismatchedReferencedDataFile) {
+  auto delete_file = std::make_shared<DataFile>(DataFile{
+      .content = DataFile::Content::kPositionDeletes,
+      .file_path = "missing-pos-delete.parquet",
+      .file_format = FileFormatType::kParquet,
+      .referenced_data_file = "other-data.parquet",
+  });
+
+  std::vector<std::shared_ptr<DataFile>> files = {delete_file};
+  auto result = loader_->LoadPositionDeletes(files, "data.parquet");
+  ASSERT_THAT(result, IsOk());
+  ASSERT_TRUE(result.value().IsEmpty());
+}
+
 TEST_F(DeleteLoaderTest, LoadPositionDeletesRejectsDV) {
   auto dv_file = std::make_shared<DataFile>(DataFile{
       .content = DataFile::Content::kPositionDeletes,

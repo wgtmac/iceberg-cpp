@@ -29,7 +29,6 @@
 #include "iceberg/iceberg_export.h"
 #include "iceberg/result.h"
 #include "iceberg/type_fwd.h"
-#include "iceberg/util/struct_like_set.h"
 
 namespace iceberg {
 

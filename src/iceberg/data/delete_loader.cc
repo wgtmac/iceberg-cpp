@@ -110,13 +110,19 @@ Result<PositionDeleteIndex> DeleteLoader::LoadPositionDeletes(
   PositionDeleteIndex index;
 
   for (const auto& file : delete_files) {
+    if (file->referenced_data_file.has_value() &&
+        file->referenced_data_file.value() != data_file_path) {
+      continue;
+    }
+
     if (file->IsDeletionVector()) {
       ICEBERG_RETURN_UNEXPECTED(LoadDV(*file, index));
+      continue;
     }
 
     ICEBERG_PRECHECK(file->content == DataFile::Content::kPositionDeletes,
                      "Expected position delete file but got content type {}",
-                     static_cast<int>(file->content));
+                     ToString(file->content));
 
     ICEBERG_RETURN_UNEXPECTED(LoadPositionDelete(*file, index, data_file_path));
   }

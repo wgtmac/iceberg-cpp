@@ -188,6 +188,9 @@ class ArrayLike;
 class MapLike;
 class StructLike;
 class StructLikeAccessor;
+template <bool kValidate>
+class StructLikeSet;
+using UncheckedStructLikeSet = StructLikeSet<false>;
 
 /// \brief Catalog
 class Catalog;
