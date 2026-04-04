@@ -128,8 +128,93 @@ INSTANTIATE_TEST_SUITE_P(
                           .start = (int64_t{1} << 32) - 5,
                           .end = (int64_t{1} << 32) + 5,
                           .absent_positions = {0, (int64_t{1} << 32) + 5},
+                      },
+                      AddRangeParams{
+                          .name = "single_position",
+                          .start = 42,
+                          .end = 43,
+                          .absent_positions = {41, 43},
                       }),
     [](const ::testing::TestParamInfo<AddRangeParams>& info) { return info.param.name; });
+
+TEST(RoaringPositionBitmapTest, TestAddRangeLargeContiguous) {
+  RoaringPositionBitmap bitmap;
+  bitmap.AddRange(500, 200500);
+
+  ASSERT_EQ(bitmap.Cardinality(), 200000u);
+  ASSERT_TRUE(bitmap.Contains(500));
+  ASSERT_TRUE(bitmap.Contains(200499));
+  ASSERT_FALSE(bitmap.Contains(499));
+  ASSERT_FALSE(bitmap.Contains(200500));
+}
+
+TEST(RoaringPositionBitmapTest, TestAddRangeSpanningThreeKeys) {
+  RoaringPositionBitmap bitmap;
+
+  int64_t start = (int64_t{0} << 32) | int64_t{0xFFFFFFF0};
+  int64_t end = (int64_t{2} << 32) | int64_t{0x10};
+  bitmap.AddRange(start, end);
+
+  ASSERT_EQ(bitmap.Cardinality(), static_cast<size_t>(end - start));
+  ASSERT_TRUE(bitmap.Contains(start));
+  ASSERT_TRUE(bitmap.Contains(end - 1));
+  ASSERT_FALSE(bitmap.Contains(start - 1));
+  ASSERT_FALSE(bitmap.Contains(end));
+  ASSERT_TRUE(bitmap.Contains(int64_t{1} << 32));
+  // Verify a sample near the end of the middle key is also present
+  ASSERT_TRUE(bitmap.Contains((int64_t{1} << 32) | int64_t{0xFFFFFFF0}));
+}
+
+TEST(RoaringPositionBitmapTest, TestAddRangeClampNegativeStart) {
+  RoaringPositionBitmap bitmap;
+  bitmap.AddRange(-1, 10);
+  ASSERT_EQ(bitmap.Cardinality(), 10u);
+  ASSERT_TRUE(bitmap.Contains(0));
+  ASSERT_TRUE(bitmap.Contains(9));
+  ASSERT_FALSE(bitmap.Contains(-1));
+}
+
+TEST(RoaringPositionBitmapTest, TestAddRangeClampBeyondMaxPosition) {
+  RoaringPositionBitmap bitmap;
+  // Range entirely beyond kMaxPosition: after clamping both endpoints the range
+  // becomes empty, so no allocation or insertion happens.
+  bitmap.AddRange(RoaringPositionBitmap::kMaxPosition + 1,
+                  RoaringPositionBitmap::kMaxPosition + 10);
+  ASSERT_TRUE(bitmap.IsEmpty());
+}
+
+struct AddRangeNoOpParams {
+  const char* name;
+  int64_t start;
+  int64_t end;
+};
+
+class RoaringPositionBitmapAddRangeNoOpTest
+    : public ::testing::TestWithParam<AddRangeNoOpParams> {};
+
+TEST_P(RoaringPositionBitmapAddRangeNoOpTest, IsNoOp) {
+  const auto& param = GetParam();
+  RoaringPositionBitmap bitmap;
+  bitmap.AddRange(param.start, param.end);
+  ASSERT_TRUE(bitmap.IsEmpty());
+  ASSERT_EQ(bitmap.Cardinality(), 0u);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    AddRangeNoOpScenarios, RoaringPositionBitmapAddRangeNoOpTest,
+    ::testing::Values(
+        AddRangeNoOpParams{.name = "equal", .start = 100, .end = 100},
+        AddRangeNoOpParams{.name = "zero_length_at_zero", .start = 0, .end = 0},
+        AddRangeNoOpParams{.name = "negative_both", .start = -10, .end = -5}),
+    [](const ::testing::TestParamInfo<AddRangeNoOpParams>& info) {
+      return info.param.name;
+    });
+
+TEST(RoaringPositionBitmapTest, TestAddRangeReversedIsNoOp) {
+  RoaringPositionBitmap bitmap;
+  bitmap.AddRange(100, 50);
+  ASSERT_TRUE(bitmap.IsEmpty());
+}
 
 struct OrParams {
   const char* name;
@@ -398,7 +483,11 @@ TEST(RoaringPositionBitmapTest, TestIsEmpty) {
 
 TEST(RoaringPositionBitmapTest, TestOptimize) {
   RoaringPositionBitmap bitmap;
-  bitmap.AddRange(0, 10000);
+  // Use Add() instead of AddRange() because addRange() creates run-length
+  // encoded containers directly, leaving nothing for Optimize() to compress.
+  for (int64_t i = 0; i < 10000; ++i) {
+    bitmap.Add(i);
+  }
   size_t size_before = bitmap.SerializedSizeInBytes();
 
   bool changed = bitmap.Optimize();

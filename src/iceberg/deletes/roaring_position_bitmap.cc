@@ -128,8 +128,22 @@ void RoaringPositionBitmap::Add(int64_t pos) {
 }
 
 void RoaringPositionBitmap::AddRange(int64_t pos_start, int64_t pos_end) {
-  for (int64_t pos = pos_start; pos < pos_end; ++pos) {
-    Add(pos);
+  pos_start = std::max(pos_start, int64_t{0});
+  pos_end = std::min(pos_end, kMaxPosition + 1);
+  if (pos_start >= pos_end) {
+    return;
+  }
+
+  int64_t pos_last = pos_end - 1;
+  int32_t start_key = Key(pos_start);
+  int32_t end_key = Key(pos_last);
+  impl_->AllocateBitmapsIfNeeded(end_key + 1);
+
+  for (int32_t key = start_key; key <= end_key; ++key) {
+    uint64_t low_start = (key == start_key) ? Pos32Bits(pos_start) : uint64_t{0};
+    uint64_t low_end = (key == end_key) ? static_cast<uint64_t>(Pos32Bits(pos_last)) + 1
+                                        : (uint64_t{1} << 32);
+    impl_->bitmaps[key].addRange(low_start, low_end);
   }
 }
 
