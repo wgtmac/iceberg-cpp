@@ -101,10 +101,6 @@ class ICEBERG_TEMPLATE_CLASS_EXPORT StructLikeSet {
   std::unordered_set<std::unique_ptr<StructLike>, KeyHash, KeyEqual> set_;
 };
 
-/// \brief Type alias for StructLikeSet without schema validation, for callers
-/// that guarantee schema conformance.
-using UncheckedStructLikeSet = StructLikeSet<false>;
-
 extern template class ICEBERG_EXTERN_TEMPLATE_CLASS_EXPORT StructLikeSet<true>;
 extern template class ICEBERG_EXTERN_TEMPLATE_CLASS_EXPORT StructLikeSet<false>;
 

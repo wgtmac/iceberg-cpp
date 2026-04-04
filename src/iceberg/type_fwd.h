@@ -188,6 +188,9 @@ class ArrayLike;
 class MapLike;
 class StructLike;
 class StructLikeAccessor;
+template <bool kValidate>
+class StructLikeSet;
+using UncheckedStructLikeSet = StructLikeSet<false>;
 
 /// \brief Catalog
 class Catalog;
@@ -220,6 +223,10 @@ class UpdateSchema;
 class UpdateSnapshotReference;
 class UpdateSortOrder;
 class UpdateStatistics;
+
+/// \brief Delete indexes.
+class DeleteLoader;
+class PositionDeleteIndex;
 
 /// ----------------------------------------------------------------------------
 /// TODO: Forward declarations below are not added yet.

@@ -42,6 +42,11 @@ iceberg_include_dir = include_directories('..')
 iceberg_sources = files(
     'arrow_c_data_guard_internal.cc',
     'catalog/memory/in_memory_catalog.cc',
+    'data/data_writer.cc',
+    'data/delete_loader.cc',
+    'data/equality_delete_writer.cc',
+    'data/position_delete_writer.cc',
+    'data/writer.cc',
     'delete_file_index.cc',
     'deletes/position_delete_index.cc',
     'deletes/roaring_position_bitmap.cc',
