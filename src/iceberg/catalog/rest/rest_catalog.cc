@@ -131,8 +131,10 @@ Result<std::shared_ptr<RestCatalog>> RestCatalog::Make(
   ICEBERG_ASSIGN_OR_RAISE(auto auth_manager,
                           auth::AuthManagers::Load(catalog_name, config.configs()));
   ICEBERG_ASSIGN_OR_RAISE(
-      auto paths, ResourcePaths::Make(std::string(TrimTrailingSlash(uri)),
-                                      config.Get(RestCatalogProperties::kPrefix)));
+      auto paths,
+      ResourcePaths::Make(std::string(TrimTrailingSlash(uri)),
+                          config.Get(RestCatalogProperties::kPrefix),
+                          config.Get(RestCatalogProperties::kNamespaceSeparator)));
 
   // Create init session for fetching server configuration
   HttpClient init_client(config.ExtractHeaders());
@@ -158,8 +160,10 @@ Result<std::shared_ptr<RestCatalog>> RestCatalog::Make(
   // Update resource paths based on the final config
   ICEBERG_ASSIGN_OR_RAISE(auto final_uri, final_config.Uri());
   ICEBERG_ASSIGN_OR_RAISE(
-      paths, ResourcePaths::Make(std::string(TrimTrailingSlash(final_uri)),
-                                 final_config.Get(RestCatalogProperties::kPrefix)));
+      paths,
+      ResourcePaths::Make(std::string(TrimTrailingSlash(final_uri)),
+                          final_config.Get(RestCatalogProperties::kPrefix),
+                          final_config.Get(RestCatalogProperties::kNamespaceSeparator)));
 
   // Get snapshot loading mode
   ICEBERG_ASSIGN_OR_RAISE(auto snapshot_mode, final_config.SnapshotLoadingMode());
@@ -203,7 +207,9 @@ Result<std::vector<Namespace>> RestCatalog::ListNamespaces(const Namespace& ns) 
   while (true) {
     std::unordered_map<std::string, std::string> params;
     if (!ns.levels.empty()) {
-      ICEBERG_ASSIGN_OR_RAISE(params[kQueryParamParent], EncodeNamespace(ns));
+      ICEBERG_ASSIGN_OR_RAISE(
+          params[kQueryParamParent],
+          EncodeNamespace(ns, config_.Get(RestCatalogProperties::kNamespaceSeparator)));
     }
     if (!next_token.empty()) {
       params[kQueryParamPageToken] = next_token;
