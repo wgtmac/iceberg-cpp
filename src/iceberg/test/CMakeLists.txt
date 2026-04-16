@@ -145,6 +145,10 @@ if(ICEBERG_BUILD_BUNDLE)
                    metadata_io_test.cc
                    struct_like_test.cc)
 
+  if(ICEBERG_S3)
+    add_iceberg_test(file_io_test USE_BUNDLE SOURCES arrow_s3_file_io_test.cc)
+  endif()
+
   add_iceberg_test(catalog_test USE_BUNDLE SOURCES in_memory_catalog_test.cc)
 
   add_iceberg_test(eval_expr_test
@@ -227,6 +231,7 @@ if(ICEBERG_BUILD_REST)
                         SOURCES
                         auth_manager_test.cc
                         endpoint_test.cc
+                        rest_file_io_test.cc
                         rest_json_serde_test.cc
                         rest_util_test.cc)
 

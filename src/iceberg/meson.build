@@ -65,6 +65,7 @@ iceberg_sources = files(
     'expression/rewrite_not.cc',
     'expression/strict_metrics_evaluator.cc',
     'expression/term.cc',
+    'file_io_registry.cc',
     'file_reader.cc',
     'file_writer.cc',
     'inheritable_metadata.cc',
@@ -148,8 +149,8 @@ iceberg_sources = files(
 # CRoaring does not export symbols, so on Windows it must
 # be used as a static lib
 croaring_needs_static = (
-    get_option('default_library') == 'static' or
-    host_machine.system() == 'windows'
+    get_option('default_library') == 'static'
+    or host_machine.system() == 'windows'
 )
 croaring_dep = dependency('croaring', static: croaring_needs_static)
 nanoarrow_dep = dependency('nanoarrow')
@@ -193,6 +194,7 @@ install_headers(
         'exception.h',
         'file_format.h',
         'file_io.h',
+        'file_io_registry.h',
         'file_reader.h',
         'file_writer.h',
         'iceberg_export.h',
