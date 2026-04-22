@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+set(CMAKE_COMPILE_WARNING_AS_ERROR FALSE)
+
 fetchcontent_declare(googletest
                      GIT_REPOSITORY https://github.com/google/googletest.git
                      GIT_TAG b514bdc898e2951020cbdca1304b75f5950d1f59 # release-1.15.2
