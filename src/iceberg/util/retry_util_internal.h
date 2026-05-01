@@ -23,6 +23,8 @@
 #include <cstdint>
 #include <functional>
 
+#include "iceberg/iceberg_export.h"
+
 namespace iceberg {
 
 struct RetryTestHooks {
@@ -35,15 +37,14 @@ struct RetryTestHooks {
   std::function<int32_t(int32_t)> jitter;
 };
 
-// Keep test hooks thread-local so fake retry timing in one test thread does not
-// leak into unrelated retry work or require synchronization around a global pointer.
-inline thread_local const RetryTestHooks* active_retry_test_hooks = nullptr;
+ICEBERG_EXPORT const RetryTestHooks* GetActiveRetryTestHooks();
+ICEBERG_EXPORT void SetActiveRetryTestHooks(const RetryTestHooks* hooks);
 
 class ScopedRetryTestHooks {
  public:
   explicit ScopedRetryTestHooks(const RetryTestHooks& hooks)
-      : previous_hooks_(active_retry_test_hooks) {
-    active_retry_test_hooks = &hooks;
+      : previous_hooks_(GetActiveRetryTestHooks()) {
+    SetActiveRetryTestHooks(&hooks);
   }
 
   ScopedRetryTestHooks(const ScopedRetryTestHooks&) = delete;
@@ -51,7 +52,7 @@ class ScopedRetryTestHooks {
   ScopedRetryTestHooks(ScopedRetryTestHooks&&) = delete;
   ScopedRetryTestHooks& operator=(ScopedRetryTestHooks&&) = delete;
 
-  ~ScopedRetryTestHooks() { active_retry_test_hooks = previous_hooks_; }
+  ~ScopedRetryTestHooks() { SetActiveRetryTestHooks(previous_hooks_); }
 
  private:
   const RetryTestHooks* previous_hooks_;

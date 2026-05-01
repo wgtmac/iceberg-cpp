@@ -33,24 +33,34 @@
 namespace iceberg {
 namespace {
 
+const RetryTestHooks*& ActiveRetryTestHooks() {
+  // Keep test hooks thread-local so fake retry timing in one test thread does not
+  // leak into unrelated retry work or require synchronization around a global pointer.
+  static thread_local const RetryTestHooks* active_retry_test_hooks = nullptr;
+  return active_retry_test_hooks;
+}
+
 RetryTestHooks::TimePoint RetryNow() {
-  if (active_retry_test_hooks != nullptr && active_retry_test_hooks->now) {
-    return active_retry_test_hooks->now();
+  const auto* hooks = GetActiveRetryTestHooks();
+  if (hooks != nullptr && hooks->now) {
+    return hooks->now();
   }
   return RetryTestHooks::Clock::now();
 }
 
 void RetrySleepFor(RetryTestHooks::Duration duration) {
-  if (active_retry_test_hooks != nullptr && active_retry_test_hooks->sleep_for) {
-    active_retry_test_hooks->sleep_for(duration);
+  const auto* hooks = GetActiveRetryTestHooks();
+  if (hooks != nullptr && hooks->sleep_for) {
+    hooks->sleep_for(duration);
     return;
   }
   std::this_thread::sleep_for(duration);
 }
 
 int32_t ApplyRetryJitter(int32_t base_delay_ms) {
-  if (active_retry_test_hooks != nullptr && active_retry_test_hooks->jitter) {
-    return active_retry_test_hooks->jitter(base_delay_ms);
+  const auto* hooks = GetActiveRetryTestHooks();
+  if (hooks != nullptr && hooks->jitter) {
+    return hooks->jitter(base_delay_ms);
   }
 
   static thread_local std::mt19937 gen(std::random_device{}());
@@ -62,6 +72,12 @@ int32_t ApplyRetryJitter(int32_t base_delay_ms) {
 }
 
 }  // namespace
+
+const RetryTestHooks* GetActiveRetryTestHooks() { return ActiveRetryTestHooks(); }
+
+void SetActiveRetryTestHooks(const RetryTestHooks* hooks) {
+  ActiveRetryTestHooks() = hooks;
+}
 
 Status RetryRunner::ValidateConfig() const {
   if (config_.num_retries < 0) {

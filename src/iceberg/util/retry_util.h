@@ -114,6 +114,12 @@ class ICEBERG_EXPORT RetryRunner {
     return *this;
   }
 
+  /// \brief Specify a single error type that should stop retries immediately.
+  ///
+  /// \note OnlyRetryOn takes priority over StopRetryOn. If OnlyRetryOn is set,
+  /// StopRetryOn is ignored.
+  RetryRunner& StopRetryOn(ErrorKind error_kind) { return StopRetryOn({error_kind}); }
+
   /// \brief Run a task that returns a Result<T>
   ///
   /// When `num_retries > 0`, the retry policy must be configured explicitly via
