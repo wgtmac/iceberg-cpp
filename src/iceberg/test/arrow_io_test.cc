@@ -404,6 +404,35 @@ TEST(FileIOAdapterTest, InputAdapterRejectsReadsAfterClose) {
   EXPECT_EQ(state->position, 0);
 }
 
+TEST(FileIOAdapterTest, InputAdapterRejectsReadAtBeyondKnownSize) {
+  auto state = std::make_shared<PermissiveReadState>();
+  state->data = "abc";
+  auto file_io = std::make_shared<PermissiveInputFileIO>(state);
+
+  ICEBERG_UNWRAP_OR_FAIL(auto input, arrow::OpenArrowInputStream(file_io, "input"));
+
+  std::array<std::byte, 1> out;
+  auto read_at_end = input->ReadAt(3, static_cast<int64_t>(out.size()), out.data());
+  auto read_past_end = input->ReadAt(4, static_cast<int64_t>(out.size()), out.data());
+
+  ASSERT_TRUE(read_at_end.ok());
+  EXPECT_EQ(read_at_end.ValueOrDie(), 0);
+  EXPECT_FALSE(read_past_end.ok());
+  EXPECT_THAT(read_past_end.status().ToString(), ::testing::HasSubstr("out of bounds"));
+}
+
+TEST(FileIOAdapterTest, InputAdapterUsesInputFileSizeWithLengthHint) {
+  auto state = std::make_shared<PermissiveReadState>();
+  state->data = "abc";
+  auto file_io = std::make_shared<PermissiveInputFileIO>(state);
+
+  ICEBERG_UNWRAP_OR_FAIL(auto input, arrow::OpenArrowInputStream(file_io, "input", 99));
+  auto size = input->GetSize();
+
+  ASSERT_TRUE(size.ok()) << size.status().ToString();
+  EXPECT_EQ(size.ValueOrDie(), 3);
+}
+
 TEST(FileIOAdapterTest, OutputAdapterRejectsWritesAfterClose) {
   auto state = std::make_shared<PermissiveWriteState>();
   auto file_io = std::make_shared<PermissiveOutputFileIO>(state);

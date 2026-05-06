@@ -59,6 +59,17 @@ Result<int64_t> ToInt64Length(size_t length) {
   }
 }
 
+::arrow::Result<int64_t> BytesToReadAt(int64_t position, int64_t nbytes, int64_t size) {
+  if (position < 0 || nbytes < 0) {
+    return ::arrow::Status::Invalid("ReadAt position and length must be non-negative");
+  }
+  if (position > size) {
+    return ::arrow::Status::IOError("Read out of bounds (offset = ", position,
+                                    ", size = ", nbytes, ") in file of size ", size);
+  }
+  return std::min(nbytes, size - position);
+}
+
 /// Adapts the generic Iceberg input stream API to Arrow's RandomAccessFile API.
 ///
 /// Avro and Parquet readers in the bundle layer consume Arrow IO streams. This
@@ -136,10 +147,6 @@ class InputStreamAdapter : public ::arrow::io::RandomAccessFile {
     if (nbytes < 0) {
       return ::arrow::Status::Invalid("Cannot read a negative number of bytes");
     }
-    {
-      std::lock_guard lock(mutex_);
-      ARROW_RETURN_NOT_OK(CheckOpenLocked());
-    }
     ARROW_ASSIGN_OR_RAISE(auto buffer, ::arrow::AllocateResizableBuffer(nbytes));
     ARROW_ASSIGN_OR_RAISE(auto bytes_read, Read(nbytes, buffer->mutable_data()));
     ARROW_RETURN_NOT_OK(buffer->Resize(bytes_read, /*shrink_to_fit=*/false));
@@ -149,15 +156,12 @@ class InputStreamAdapter : public ::arrow::io::RandomAccessFile {
   ::arrow::Result<int64_t> GetSize() override { return size_; }
 
   ::arrow::Result<int64_t> ReadAt(int64_t position, int64_t nbytes, void* out) override {
-    if (position < 0 || nbytes < 0) {
-      return ::arrow::Status::Invalid("ReadAt position and length must be non-negative");
-    }
     std::lock_guard lock(mutex_);
     ARROW_RETURN_NOT_OK(CheckOpenLocked());
-    if (position >= size_ || nbytes == 0) {
+    ARROW_ASSIGN_OR_RAISE(auto bytes_to_read, BytesToReadAt(position, nbytes, size_));
+    if (bytes_to_read == 0) {
       return 0;
     }
-    auto bytes_to_read = std::min(nbytes, size_ - position);
     auto data = reinterpret_cast<std::byte*>(out);
     auto status =
         input_->ReadFully(position, std::span(data, static_cast<size_t>(bytes_to_read)));
@@ -169,14 +173,11 @@ class InputStreamAdapter : public ::arrow::io::RandomAccessFile {
 
   ::arrow::Result<std::shared_ptr<::arrow::Buffer>> ReadAt(int64_t position,
                                                            int64_t nbytes) override {
-    if (position < 0 || nbytes < 0) {
-      return ::arrow::Status::Invalid("ReadAt position and length must be non-negative");
-    }
     {
       std::lock_guard lock(mutex_);
       ARROW_RETURN_NOT_OK(CheckOpenLocked());
     }
-    auto bytes_to_read = position >= size_ ? 0 : std::min(nbytes, size_ - position);
+    ARROW_ASSIGN_OR_RAISE(auto bytes_to_read, BytesToReadAt(position, nbytes, size_));
     ARROW_ASSIGN_OR_RAISE(auto buffer, ::arrow::AllocateResizableBuffer(bytes_to_read));
     if (bytes_to_read == 0) {
       return std::shared_ptr<::arrow::Buffer>(std::move(buffer));
@@ -295,22 +296,16 @@ class ArrowSeekableInputStream : public SeekableInputStream {
       : input_(std::move(input)) {}
 
   Result<int64_t> Position() const override {
-    ICEBERG_RETURN_UNEXPECTED(CheckOpen());
     ICEBERG_ARROW_ASSIGN_OR_RETURN(auto position, input_->Tell());
     return position;
   }
 
   Status Seek(int64_t position) override {
-    ICEBERG_RETURN_UNEXPECTED(CheckOpen());
     ICEBERG_ARROW_RETURN_NOT_OK(input_->Seek(position));
     return {};
   }
 
   Result<int64_t> Read(std::span<std::byte> out) override {
-    ICEBERG_RETURN_UNEXPECTED(CheckOpen());
-    if (out.empty()) {
-      return 0;
-    }
     ICEBERG_ASSIGN_OR_RAISE(auto size, ToInt64Length(out.size()));
     ICEBERG_ARROW_ASSIGN_OR_RETURN(auto bytes_read, input_->Read(size, out.data()));
     if (bytes_read < 0 || bytes_read > size) {
@@ -320,7 +315,6 @@ class ArrowSeekableInputStream : public SeekableInputStream {
   }
 
   Status ReadFully(int64_t position, std::span<std::byte> out) override {
-    ICEBERG_RETURN_UNEXPECTED(CheckOpen());
     if (position < 0) {
       return InvalidArgument("Cannot read from negative position {}", position);
     }
@@ -361,24 +355,15 @@ class ArrowSeekableInputStream : public SeekableInputStream {
   }
 
   Status Close() override {
-    if (closed_) {
+    if (input_->closed()) {
       return {};
     }
     ICEBERG_ARROW_RETURN_NOT_OK(input_->Close());
-    closed_ = true;
     return {};
   }
 
  private:
-  Status CheckOpen() const {
-    if (closed_) {
-      return IOError("Operation on closed Arrow input stream");
-    }
-    return {};
-  }
-
   std::shared_ptr<::arrow::io::RandomAccessFile> input_;
-  bool closed_ = false;
 };
 
 class ArrowPositionOutputStream : public PositionOutputStream {
@@ -387,46 +372,31 @@ class ArrowPositionOutputStream : public PositionOutputStream {
       : output_(std::move(output)) {}
 
   Result<int64_t> Position() const override {
-    ICEBERG_RETURN_UNEXPECTED(CheckOpen());
     ICEBERG_ARROW_ASSIGN_OR_RETURN(auto position, output_->Tell());
     return position;
   }
 
   Status Write(std::span<const std::byte> data) override {
-    ICEBERG_RETURN_UNEXPECTED(CheckOpen());
-    if (data.empty()) {
-      return {};
-    }
     ICEBERG_ASSIGN_OR_RAISE(auto size, ToInt64Length(data.size()));
     ICEBERG_ARROW_RETURN_NOT_OK(output_->Write(data.data(), size));
     return {};
   }
 
   Status Flush() override {
-    ICEBERG_RETURN_UNEXPECTED(CheckOpen());
     ICEBERG_ARROW_RETURN_NOT_OK(output_->Flush());
     return {};
   }
 
   Status Close() override {
-    if (closed_) {
+    if (output_->closed()) {
       return {};
     }
     ICEBERG_ARROW_RETURN_NOT_OK(output_->Close());
-    closed_ = true;
     return {};
   }
 
  private:
-  Status CheckOpen() const {
-    if (closed_) {
-      return IOError("Operation on closed Arrow output stream");
-    }
-    return {};
-  }
-
   std::shared_ptr<::arrow::io::OutputStream> output_;
-  bool closed_ = false;
 };
 
 class ArrowInputFile : public InputFile {
@@ -529,12 +499,11 @@ Result<std::shared_ptr<::arrow::io::RandomAccessFile>> OpenArrowInputStream(
   int64_t size;
   std::unique_ptr<InputFile> input_file;
   if (length.has_value()) {
-    ICEBERG_ASSIGN_OR_RAISE(size, ToInt64Length(*length));
     ICEBERG_ASSIGN_OR_RAISE(input_file, io->NewInputFile(path, *length));
   } else {
     ICEBERG_ASSIGN_OR_RAISE(input_file, io->NewInputFile(path));
-    ICEBERG_ASSIGN_OR_RAISE(size, input_file->Size());
   }
+  ICEBERG_ASSIGN_OR_RAISE(size, input_file->Size());
   if (size < 0) {
     return Invalid("Invalid negative file size {} for {}", size, path);
   }
