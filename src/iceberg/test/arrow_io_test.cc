@@ -341,8 +341,8 @@ TEST_F(LocalFileIOTest, DeleteFile) {
   EXPECT_THAT(del_res, HasErrorMessage("Cannot delete file"));
 }
 
-void VerifyReadFullyPreservesPosition(const std::shared_ptr<FileIO>& file_io,
-                                      const std::string& path) {
+void VerifyReadFullyReadsFromAbsolutePosition(const std::shared_ptr<FileIO>& file_io,
+                                              const std::string& path) {
   ASSERT_THAT(file_io->WriteFile(path, "abcdef"), IsOk());
 
   ICEBERG_UNWRAP_OR_FAIL(auto input_file, file_io->NewInputFile(path));
@@ -354,16 +354,23 @@ void VerifyReadFullyPreservesPosition(const std::shared_ptr<FileIO>& file_io,
 
   std::string data(reinterpret_cast<const char*>(buffer.data()), buffer.size());
   EXPECT_EQ(data, "bc");
-  EXPECT_THAT(stream->Position(), HasValue(::testing::Eq(5)));
+
+  ASSERT_THAT(stream->Seek(5), IsOk());
+  std::array<std::byte, 1> next;
+  ICEBERG_UNWRAP_OR_FAIL(auto bytes_read, stream->Read(next));
+  ASSERT_EQ(bytes_read, 1);
+  EXPECT_EQ(next[0], std::byte{'f'});
 }
 
-TEST_F(LocalFileIOTest, ReadFullyPreservesPosition) {
-  ASSERT_NO_FATAL_FAILURE(VerifyReadFullyPreservesPosition(file_io_, temp_filepath_));
+TEST_F(LocalFileIOTest, ReadFullyReadsFromAbsolutePosition) {
+  ASSERT_NO_FATAL_FAILURE(
+      VerifyReadFullyReadsFromAbsolutePosition(file_io_, temp_filepath_));
 }
 
-TEST_F(LocalFileIOTest, StdReadFullyPreservesPosition) {
+TEST_F(LocalFileIOTest, StdReadFullyReadsFromAbsolutePosition) {
   auto file_io = std::make_shared<test::StdFileIO>();
-  ASSERT_NO_FATAL_FAILURE(VerifyReadFullyPreservesPosition(file_io, temp_filepath_));
+  ASSERT_NO_FATAL_FAILURE(
+      VerifyReadFullyReadsFromAbsolutePosition(file_io, temp_filepath_));
 }
 
 TEST_F(LocalFileIOTest, StdReadKeepsPositionAvailableAtEof) {

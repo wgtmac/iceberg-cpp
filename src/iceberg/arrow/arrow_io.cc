@@ -530,8 +530,12 @@ Result<std::shared_ptr<::arrow::io::OutputStream>> OpenArrowOutputStream(
   }
 
   ICEBERG_ASSIGN_OR_RAISE(auto output_file, io->NewOutputFile(path));
-  ICEBERG_ASSIGN_OR_RAISE(
-      auto output, overwrite ? output_file->CreateOrOverwrite() : output_file->Create());
+  std::unique_ptr<PositionOutputStream> output;
+  if (overwrite) {
+    ICEBERG_ASSIGN_OR_RAISE(output, output_file->CreateOrOverwrite());
+  } else {
+    ICEBERG_ASSIGN_OR_RAISE(output, output_file->Create());
+  }
   return std::make_shared<OutputStreamAdapter>(std::move(output));
 }
 

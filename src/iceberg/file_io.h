@@ -48,8 +48,9 @@ class ICEBERG_EXPORT SeekableInputStream {
 
   /// \brief Read exactly out.size() bytes from an absolute position.
   ///
-  /// Fails if fewer than out.size() bytes are available. The current stream position is
-  /// unchanged after this call.
+  /// Fails if fewer than out.size() bytes are available. The current stream position
+  /// after this call is unspecified; callers should Seek before subsequent
+  /// position-dependent reads.
   virtual Status ReadFully(int64_t position, std::span<std::byte> out) = 0;
 
   /// \brief Close the stream. Implementations should allow repeated Close calls.
