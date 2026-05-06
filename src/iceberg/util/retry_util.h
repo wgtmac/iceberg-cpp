@@ -163,8 +163,11 @@ class ICEBERG_EXPORT RetryRunner {
 
  private:
   enum class RetryPolicyMode {
+    // No retry policy was selected; invalid when retries are enabled.
     kUnset,
+    // Retry only errors listed in retry_error_kinds_.
     kOnlyRetryOn,
+    // Retry all errors except those listed in retry_error_kinds_.
     kStopRetryOn,
   };
 
@@ -172,6 +175,7 @@ class ICEBERG_EXPORT RetryRunner {
   using Duration = std::chrono::milliseconds;
   using TimePoint = Clock::time_point;
 
+  /// \brief Validate retry counts, timing bounds, and the selected retry policy.
   Status ValidateConfig() const;
   std::optional<TimePoint> ComputeDeadline() const;
   bool HasTimedOut(const std::optional<TimePoint>& deadline) const;

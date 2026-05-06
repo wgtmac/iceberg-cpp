@@ -210,7 +210,7 @@ TEST(RetryRunnerTest, OnlyRetryOnTakesPrecedenceOverStopRetryOn) {
                                         .max_wait_ms = 10,
                                         .total_timeout_ms = 5000})
                     .OnlyRetryOn(ErrorKind::kCommitFailed)
-                    .StopRetryOn({ErrorKind::kCommitFailed})
+                    .StopRetryOn(ErrorKind::kCommitFailed)
                     .Run(
                         [&]() -> Result<int> {
                           ++call_count;
