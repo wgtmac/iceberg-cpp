@@ -135,9 +135,11 @@ struct ParquetCodec {
 
 std::optional<ParquetCodec> UnavailableParquetCodec() {
   const std::vector<ParquetCodec> codecs = {
-      {"snappy", ::arrow::Compression::SNAPPY}, {"gzip", ::arrow::Compression::GZIP},
-      {"brotli", ::arrow::Compression::BROTLI}, {"lz4", ::arrow::Compression::LZ4},
-      {"zstd", ::arrow::Compression::ZSTD},
+      {.name = "snappy", .compression = ::arrow::Compression::SNAPPY},
+      {.name = "gzip", .compression = ::arrow::Compression::GZIP},
+      {.name = "brotli", .compression = ::arrow::Compression::BROTLI},
+      {.name = "lz4", .compression = ::arrow::Compression::LZ4},
+      {.name = "zstd", .compression = ::arrow::Compression::ZSTD},
   };
   for (const auto& codec : codecs) {
     if (!::arrow::util::Codec::IsAvailable(codec.compression)) {
