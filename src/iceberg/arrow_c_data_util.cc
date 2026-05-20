@@ -63,10 +63,10 @@ ProjectionContext::ProjectBatchFunction GetProjectBatchFunction() {
   return g_project_batch_function;
 }
 
-Result<std::vector<int>> BuildSelectedFieldIndices(
+Result<std::vector<int32_t>> BuildSelectedFieldIndices(
     std::span<const SchemaField> input_fields,
     std::span<const SchemaField> output_fields) {
-  std::vector<int> selected_field_indices;
+  std::vector<int32_t> selected_field_indices;
   selected_field_indices.reserve(output_fields.size());
 
   for (const auto& output_field : output_fields) {
@@ -80,9 +80,10 @@ Result<std::vector<int>> BuildSelectedFieldIndices(
           output_field.field_id(), input_field.type()->ToString(),
           output_field.type()->ToString());
     }
-    ICEBERG_PRECHECK(input_index <= static_cast<size_t>(std::numeric_limits<int>::max()),
-                     "Input field index {} exceeds int range", input_index);
-    selected_field_indices.push_back(static_cast<int>(input_index));
+    ICEBERG_PRECHECK(
+        input_index <= static_cast<size_t>(std::numeric_limits<int32_t>::max()),
+        "Input field index {} exceeds int32 range", input_index);
+    selected_field_indices.push_back(static_cast<int32_t>(input_index));
   }
 
   return selected_field_indices;
@@ -294,7 +295,7 @@ const ArrowSchema& ProjectionContext::output_arrow_schema() const {
   return output_arrow_schema_;
 }
 
-std::span<const int> ProjectionContext::selected_field_indices() const {
+std::span<const int32_t> ProjectionContext::selected_field_indices() const {
   return selected_field_indices_;
 }
 
@@ -329,11 +330,10 @@ auto ProjectionContext::ResolveProjectBatchFunction()
 
 namespace {
 
-Result<ArrowArray> ProjectBatchNanoarrow(const ArrowSchema& input_arrow_schema,
-                                         const ArrowArray& input_batch,
-                                         std::span<const int32_t> row_indices,
-                                         const ArrowSchema& output_arrow_schema,
-                                         std::span<const int> selected_field_indices) {
+Result<ArrowArray> ProjectBatchNanoarrow(
+    const ArrowSchema& input_arrow_schema, const ArrowArray& input_batch,
+    std::span<const int32_t> row_indices, const ArrowSchema& output_arrow_schema,
+    std::span<const int32_t> selected_field_indices) {
   ArrowArrayView input_view;
   ArrowError error;
   ICEBERG_NANOARROW_RETURN_UNEXPECTED_WITH_ERROR(
@@ -342,7 +342,7 @@ Result<ArrowArray> ProjectBatchNanoarrow(const ArrowSchema& input_arrow_schema,
   ICEBERG_NANOARROW_RETURN_UNEXPECTED_WITH_ERROR(
       ArrowArrayViewSetArray(&input_view, &input_batch, &error), error);
   ICEBERG_NANOARROW_RETURN_UNEXPECTED_WITH_ERROR(
-      ArrowArrayViewValidate(&input_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+      ArrowArrayViewValidate(&input_view, NANOARROW_VALIDATION_LEVEL_DEFAULT, &error),
       error);
 
   ArrowArray output_array;
@@ -359,7 +359,7 @@ Result<ArrowArray> ProjectBatchNanoarrow(const ArrowSchema& input_arrow_schema,
                      input_batch.length);
     for (size_t output_index = 0; output_index < selected_field_indices.size();
          ++output_index) {
-      const int input_index = selected_field_indices[output_index];
+      const int32_t input_index = selected_field_indices[output_index];
       ICEBERG_RETURN_UNEXPECTED(AppendValue(*input_arrow_schema.children[input_index],
                                             *input_batch.children[input_index],
                                             *input_view.children[input_index], row_index,
@@ -384,6 +384,8 @@ Result<ArrowArray> ProjectBatch(ArrowArray* input_batch,
 
   auto project_batch_function = projection.project_batch_function();
   if (project_batch_function != nullptr) {
+    // ProjectBatch owns input_batch. Arrow-backed implementations import it and clear
+    // release, so input_batch_guard becomes a no-op instead of double-releasing.
     return project_batch_function(input_batch, row_indices, projection);
   }
 

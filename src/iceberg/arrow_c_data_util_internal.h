@@ -27,7 +27,6 @@
 #include <optional>
 #include <span>
 #include <string>
-#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -39,6 +38,8 @@
 namespace iceberg {
 
 /// \brief Cached state for ProjectBatch over one input/output schema pair.
+///
+/// Exported because this internal utility is shared across library translation units.
 class ICEBERG_EXPORT ProjectionContext {
  public:
   using ProjectBatchState = std::shared_ptr<void>;
@@ -49,6 +50,9 @@ class ICEBERG_EXPORT ProjectionContext {
       -> Result<ArrowArray>;
 
   /// \brief Register a custom implementation for ProjectBatch.
+  ///
+  /// Registration is process-wide. If multiple implementations are registered,
+  /// the last non-null implementation wins.
   static void RegisterProjectBatchFunction(ProjectBatchFunction project_batch_function);
 
   /// \brief Returns true when a custom implementation has been registered.
@@ -87,7 +91,7 @@ class ICEBERG_EXPORT ProjectionContext {
 
   const ArrowSchema& output_arrow_schema() const;
 
-  std::span<const int> selected_field_indices() const;
+  std::span<const int32_t> selected_field_indices() const;
 
   ProjectBatchFunction project_batch_function() const;
 
@@ -96,9 +100,11 @@ class ICEBERG_EXPORT ProjectionContext {
  private:
   ProjectionContext() = default;
 
+  // Raw schema pointers are borrowed from caller-owned schemas. FileScanTaskReader
+  // keeps those schema objects alive in the same stream source that owns this context.
   const Schema* input_schema_ = nullptr;
   const Schema* output_schema_ = nullptr;
-  std::vector<int> selected_field_indices_;
+  std::vector<int32_t> selected_field_indices_;
   ArrowSchema input_arrow_schema_{};
   ArrowSchema output_arrow_schema_{};
   ProjectBatchFunction project_batch_function_ = nullptr;

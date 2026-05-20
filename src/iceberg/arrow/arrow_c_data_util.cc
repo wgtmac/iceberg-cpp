@@ -88,6 +88,7 @@ Result<ArrowArray> ProjectBatchArrowCompute(ArrowArray* input_batch,
       ::arrow::ImportRecordBatch(input_batch, state->input_schema));
 
   const int32_t empty_index = 0;
+  // Buffer::Wrap needs a valid pointer even when the zero-length buffer is never read.
   const int32_t* row_indices_data =
       row_indices.empty() ? &empty_index : row_indices.data();
   auto index_array = std::make_shared<::arrow::Int32Array>(
@@ -96,7 +97,7 @@ Result<ArrowArray> ProjectBatchArrowCompute(ArrowArray* input_batch,
 
   std::vector<std::shared_ptr<::arrow::Array>> output_columns;
   output_columns.reserve(projection.selected_field_indices().size());
-  for (int input_index : projection.selected_field_indices()) {
+  for (int32_t input_index : projection.selected_field_indices()) {
     ICEBERG_PRECHECK(input_index >= 0 && input_index < input_record_batch->num_columns(),
                      "Input field index {} out of range for batch with {} columns",
                      input_index, input_record_batch->num_columns());
