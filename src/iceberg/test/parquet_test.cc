@@ -133,7 +133,7 @@ struct ParquetCodec {
   ::arrow::Compression::type compression;
 };
 
-std::optional<ParquetCodec> UnavailableParquetCodec() {
+std::optional<ParquetCodec> FirstUnavailableParquetCodec() {
   const std::vector<ParquetCodec> codecs = {
       {.name = "snappy", .compression = ::arrow::Compression::SNAPPY},
       {.name = "gzip", .compression = ::arrow::Compression::GZIP},
@@ -487,7 +487,7 @@ TEST_F(ParquetReadWrite, EmptyStruct) {
 }
 
 TEST_F(ParquetReadWrite, RejectsUnavailableCompressionCodec) {
-  auto unavailable_codec = UnavailableParquetCodec();
+  auto unavailable_codec = FirstUnavailableParquetCodec();
   if (!unavailable_codec.has_value()) {
     GTEST_SKIP() << "All optional Parquet compression codecs are available";
   }

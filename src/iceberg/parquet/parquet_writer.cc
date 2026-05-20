@@ -47,23 +47,21 @@ Result<std::shared_ptr<::arrow::io::OutputStream>> OpenOutputStream(
 
 Result<::arrow::Compression::type> ParseCompression(const WriterProperties& properties) {
   const auto& compression_name = properties.Get(WriterProperties::kParquetCompression);
-  ::arrow::Compression::type compression;
   if (compression_name == "uncompressed") {
-    compression = ::arrow::Compression::UNCOMPRESSED;
+    return ::arrow::Compression::UNCOMPRESSED;
   } else if (compression_name == "snappy") {
-    compression = ::arrow::Compression::SNAPPY;
+    return ::arrow::Compression::SNAPPY;
   } else if (compression_name == "gzip") {
-    compression = ::arrow::Compression::GZIP;
+    return ::arrow::Compression::GZIP;
   } else if (compression_name == "brotli") {
-    compression = ::arrow::Compression::BROTLI;
+    return ::arrow::Compression::BROTLI;
   } else if (compression_name == "lz4") {
-    compression = ::arrow::Compression::LZ4;
+    return ::arrow::Compression::LZ4;
   } else if (compression_name == "zstd") {
-    compression = ::arrow::Compression::ZSTD;
+    return ::arrow::Compression::ZSTD;
   } else {
     return InvalidArgument("Unsupported Parquet compression codec: {}", compression_name);
   }
-  return compression;
 }
 
 Status CheckCompressionAvailable(std::string_view compression_name,
