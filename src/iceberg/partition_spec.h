@@ -30,6 +30,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "iceberg/constants.h"
 #include "iceberg/iceberg_export.h"
 #include "iceberg/partition_field.h"
 #include "iceberg/result.h"
@@ -46,12 +47,6 @@ namespace iceberg {
 /// evolution.
 class ICEBERG_EXPORT PartitionSpec : public util::Formattable {
  public:
-  static constexpr int32_t kInitialSpecId = 0;
-  /// \brief The start ID for partition field.  It is only used to generate
-  /// partition field id for v1 metadata where it is tracked.
-  static constexpr int32_t kLegacyPartitionDataIdStart = 1000;
-  static constexpr int32_t kInvalidPartitionFieldId = -1;
-
   /// \brief Get an unsorted partition spec singleton.
   static const std::shared_ptr<PartitionSpec>& Unpartitioned();
 

@@ -77,10 +77,10 @@ std::shared_ptr<TableMetadata> CreateTableMetadataWithSnapshots(
   metadata->last_column_id = 2;
   metadata->current_schema_id = 0;
   metadata->schemas.push_back(CreateTestSchema());
-  metadata->default_spec_id = PartitionSpec::kInitialSpecId;
+  metadata->default_spec_id = kInitialSpecId;
   metadata->last_partition_id = 0;
   metadata->current_snapshot_id = main2_snapshot_id;
-  metadata->default_sort_order_id = SortOrder::kInitialSortOrderId;
+  metadata->default_sort_order_id = kInitialSortOrderId;
   metadata->sort_orders.push_back(SortOrder::Unsorted());
   metadata->next_row_id = TableMetadata::kInitialRowId;
 

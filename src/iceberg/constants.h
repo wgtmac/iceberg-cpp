@@ -38,6 +38,19 @@ constexpr int64_t kInvalidSequenceNumber = -1;
 /// adapter.
 constexpr int64_t kUnassignedSequenceNumber = -1;
 
-// TODO(gangwu): move other commonly used constants here.
+constexpr int32_t kInitialSchemaId = 0;
+constexpr int32_t kInitialColumnId = 0;
+constexpr int32_t kInvalidColumnId = -1;
+
+constexpr int32_t kInvalidFieldId = -1;
+
+constexpr int32_t kInitialSpecId = 0;
+/// \brief The start ID for partition field.  It is only used to generate
+/// partition field id for v1 metadata where it is tracked.
+constexpr int32_t kLegacyPartitionDataIdStart = 1000;
+constexpr int32_t kInvalidPartitionFieldId = -1;
+
+constexpr int32_t kUnsortedOrderId = 0;
+constexpr int32_t kInitialSortOrderId = 1;
 
 }  // namespace iceberg

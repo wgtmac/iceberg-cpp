@@ -63,7 +63,7 @@ UpdatePartitionSpec::UpdatePartitionSpec(std::shared_ptr<TransactionContext> ctx
   schema_ = std::move(schema_result.value());
 
   last_assigned_partition_id_ =
-      std::max(base().last_partition_id, PartitionSpec::kLegacyPartitionDataIdStart - 1);
+      std::max(base().last_partition_id, kLegacyPartitionDataIdStart - 1);
   name_to_field_ = IndexSpecByName(*spec_);
   transform_to_field_ = IndexSpecByTransform(*spec_);
 

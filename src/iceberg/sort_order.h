@@ -25,6 +25,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "iceberg/constants.h"
 #include "iceberg/iceberg_export.h"
 #include "iceberg/sort_field.h"
 #include "iceberg/type_fwd.h"
@@ -39,9 +40,6 @@ namespace iceberg {
 /// applied to the data.
 class ICEBERG_EXPORT SortOrder : public util::Formattable {
  public:
-  static constexpr int32_t kUnsortedOrderId = 0;
-  static constexpr int32_t kInitialSortOrderId = 1;
-
   /// \brief Get an unsorted sort order singleton.
   static const std::shared_ptr<SortOrder>& Unsorted();
 

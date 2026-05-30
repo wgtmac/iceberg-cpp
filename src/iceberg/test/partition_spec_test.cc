@@ -133,7 +133,7 @@ TEST(PartitionSpecTest, PartitionTypeTest) {
   auto field6 = SchemaField::MakeRequired(6, "id_truncate", int32());
   auto const schema = std::make_shared<Schema>(
       std::vector<SchemaField>{field1, field2, field3, field4, field5, field6},
-      Schema::kInitialSchemaId);
+      kInitialSchemaId);
 
   ICEBERG_UNWRAP_OR_FAIL(auto parsed_spec, PartitionSpecFromJson(schema, json, 1));
   ICEBERG_UNWRAP_OR_FAIL(auto partition_type, parsed_spec->PartitionType(*schema));
@@ -152,7 +152,7 @@ TEST(PartitionSpecTest, PartitionTypeTest) {
 TEST(PartitionSpecTest, InvalidTransformForType) {
   // Test Day transform on string type (should fail)
   auto field_string = SchemaField::MakeRequired(6, "s", string());
-  Schema schema_string({field_string}, Schema::kInitialSchemaId);
+  Schema schema_string({field_string}, kInitialSchemaId);
 
   PartitionField pt_field_invalid(6, 1005, "s_day", Transform::Day());
   auto result = PartitionSpec::Make(schema_string, 1, {pt_field_invalid}, false);
@@ -169,7 +169,7 @@ TEST(PartitionSpecTest, InvalidTransformForType) {
 TEST(PartitionSpecTest, SourceIdNotFound) {
   auto field1 = SchemaField::MakeRequired(1, "id", int64());
   auto field2 = SchemaField::MakeRequired(2, "ts", timestamp());
-  Schema schema({field1, field2}, Schema::kInitialSchemaId);
+  Schema schema({field1, field2}, kInitialSchemaId);
 
   // Try to create partition field with source ID 99 which doesn't exist
   PartitionField pt_field_invalid(99, 1000, "Test", Transform::Identity());
@@ -182,7 +182,7 @@ TEST(PartitionSpecTest, SourceIdNotFound) {
 TEST(PartitionSpecTest, AllowMissingFields) {
   auto field1 = SchemaField::MakeRequired(1, "id", int64());
   auto field2 = SchemaField::MakeRequired(2, "ts", timestamp());
-  Schema schema({field1, field2}, Schema::kInitialSchemaId);
+  Schema schema({field1, field2}, kInitialSchemaId);
 
   // Create partition field with source ID 99 which doesn't exist
   PartitionField pt_field_missing(99, 1000, "Test", Transform::Identity());
@@ -204,13 +204,13 @@ TEST(PartitionSpecTest, AllowMissingFields) {
 TEST(PartitionSpecTest, PartitionFieldInStruct) {
   auto field1 = SchemaField::MakeRequired(1, "id", int64());
   auto field2 = SchemaField::MakeRequired(2, "ts", timestamp());
-  Schema base_schema({field1, field2}, Schema::kInitialSchemaId);
+  Schema base_schema({field1, field2}, kInitialSchemaId);
 
   auto struct_type =
       std::make_shared<StructType>(std::vector<SchemaField>{field1, field2});
   auto outer_struct = SchemaField::MakeRequired(11, "MyStruct", struct_type);
 
-  Schema schema({outer_struct}, Schema::kInitialSchemaId);
+  Schema schema({outer_struct}, kInitialSchemaId);
   PartitionField pt_field(1, 1000, "id_partition", Transform::Identity());
 
   EXPECT_THAT(PartitionSpec::Make(schema, 1, {pt_field}, false), IsOk());
@@ -226,7 +226,7 @@ TEST(PartitionSpecTest, PartitionFieldInStructInStruct) {
   auto outer_struct = std::make_shared<StructType>(std::vector<SchemaField>{inner_field});
   SchemaField outer_field(12, "Outer", outer_struct, true);
 
-  Schema schema({outer_field}, Schema::kInitialSchemaId);
+  Schema schema({outer_field}, kInitialSchemaId);
   PartitionField pt_field(1, 1000, "id_partition", Transform::Identity());
   EXPECT_THAT(PartitionSpec::Make(schema, 1, {pt_field}, false), IsOk());
 }
@@ -234,7 +234,7 @@ TEST(PartitionSpecTest, PartitionFieldInStructInStruct) {
 TEST(PartitionSpecTest, PartitionFieldInList) {
   auto list_type = std::make_shared<ListType>(1, int32(), /*element_required=*/false);
   auto list_field = SchemaField::MakeRequired(2, "MyList", list_type);
-  Schema schema({list_field}, Schema::kInitialSchemaId);
+  Schema schema({list_field}, kInitialSchemaId);
 
   // Try to partition on the list element field (field ID 1 is the element)
   PartitionField pt_field(1, 1000, "element_partition", Transform::Identity());
@@ -251,7 +251,7 @@ TEST(PartitionSpecTest, PartitionFieldInStructInList) {
                                               /*element_required=*/false);
   auto list_field = SchemaField::MakeRequired(3, "MyList", list_type);
 
-  Schema schema({list_field}, Schema::kInitialSchemaId);
+  Schema schema({list_field}, kInitialSchemaId);
   PartitionField pt_field(1, 1000, "foo_partition", Transform::Identity());
 
   auto result = PartitionSpec::Make(schema, 1, {pt_field}, false);
@@ -265,7 +265,7 @@ TEST(PartitionSpecTest, PartitionFieldInMap) {
   auto map_type = std::make_shared<MapType>(key_field, value_field);
   auto map_field = SchemaField::MakeRequired(3, "MyMap", map_type);
 
-  Schema schema({map_field}, Schema::kInitialSchemaId);
+  Schema schema({map_field}, kInitialSchemaId);
   PartitionField pt_field_key(1, 1000, "key_partition", Transform::Identity());
 
   auto result_key = PartitionSpec::Make(schema, 1, {pt_field_key}, false);
@@ -290,7 +290,7 @@ TEST(PartitionSpecTest, PartitionFieldInStructInMap) {
   auto map_type = std::make_shared<MapType>(key_field, value_field);
   auto map_field = SchemaField::MakeRequired(5, "MyMap", map_type);
 
-  Schema schema({map_field}, Schema::kInitialSchemaId);
+  Schema schema({map_field}, kInitialSchemaId);
   PartitionField pt_field_key(1, 1000, "foo_partition", Transform::Identity());
 
   auto result_key = PartitionSpec::Make(schema, 1, {pt_field_key}, false);
@@ -308,7 +308,7 @@ TEST(PartitionSpecTest, ValidateRedundantPartitionsExactDuplicates) {
   // Create a schema with different field types
   auto ts_field = SchemaField::MakeRequired(1, "ts", timestamp());
   auto id_field = SchemaField::MakeRequired(2, "id", int64());
-  Schema schema({ts_field, id_field}, Schema::kInitialSchemaId);
+  Schema schema({ts_field, id_field}, kInitialSchemaId);
 
   // Test: exact duplicate transforms on same field (same dedup name)
   {
@@ -334,7 +334,7 @@ TEST(PartitionSpecTest, ValidateRedundantPartitionsExactDuplicates) {
   // Test: same truncate width on same field (redundant)
   {
     auto name_field = SchemaField::MakeRequired(3, "name", string());
-    Schema schema_with_string({name_field}, Schema::kInitialSchemaId);
+    Schema schema_with_string({name_field}, kInitialSchemaId);
 
     PartitionField truncate1(3, 1000, "name_trunc_4_3_1", Transform::Truncate(4));
     PartitionField truncate2(3, 1001, "name_trunc_4_3_2", Transform::Truncate(4));
@@ -351,7 +351,7 @@ TEST(PartitionSpecTest, ValidateRedundantPartitionsAllowedCases) {
   auto ts_field = SchemaField::MakeRequired(1, "ts", timestamp());
   auto id_field = SchemaField::MakeRequired(2, "id", int64());
   auto name_field = SchemaField::MakeRequired(3, "name", string());
-  Schema schema({ts_field, id_field, name_field}, Schema::kInitialSchemaId);
+  Schema schema({ts_field, id_field, name_field}, kInitialSchemaId);
 
   // Test: different bucket sizes on same field (allowed - different dedup names)
   {
@@ -404,7 +404,7 @@ TEST(PartitionSpecTest, ValidateRedundantPartitionsIdentityTransforms) {
   // Create a schema with different field types
   auto id_field = SchemaField::MakeRequired(1, "id", int64());
   auto name_field = SchemaField::MakeRequired(2, "name", string());
-  Schema schema({id_field, name_field}, Schema::kInitialSchemaId);
+  Schema schema({id_field, name_field}, kInitialSchemaId);
 
   // Test: multiple identity transforms on same field (redundant)
   {
@@ -431,7 +431,7 @@ TEST(PartitionSpecTest, PartitionPath) {
   auto id_field = SchemaField::MakeRequired(1, "id", int64());
   auto name_field = SchemaField::MakeRequired(2, "name", string());
   auto ts_field = SchemaField::MakeRequired(3, "ts", timestamp());
-  Schema schema({id_field, name_field, ts_field}, Schema::kInitialSchemaId);
+  Schema schema({id_field, name_field, ts_field}, kInitialSchemaId);
 
   // Create partition fields
   PartitionField id_field_partition(1, 1000, "id_partition", Transform::Identity());

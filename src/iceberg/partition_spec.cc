@@ -275,7 +275,7 @@ Result<std::unique_ptr<PartitionSpec>> PartitionSpec::Make(
 
 bool PartitionSpec::HasSequentialFieldIds(const PartitionSpec& spec) {
   for (size_t i = 0; i < spec.fields().size(); i += 1) {
-    if (spec.fields()[i].field_id() != PartitionSpec::kLegacyPartitionDataIdStart + i) {
+    if (spec.fields()[i].field_id() != kLegacyPartitionDataIdStart + i) {
       return false;
     }
   }

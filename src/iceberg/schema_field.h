@@ -28,6 +28,7 @@
 #include <string>
 #include <string_view>
 
+#include "iceberg/constants.h"
 #include "iceberg/iceberg_export.h"
 #include "iceberg/result.h"
 #include "iceberg/type_fwd.h"
@@ -38,8 +39,6 @@ namespace iceberg {
 /// \brief A type combined with a name.
 class ICEBERG_EXPORT SchemaField : public iceberg::util::Formattable {
  public:
-  static constexpr int32_t kInvalidFieldId = -1;
-
   /// \brief Construct a field.
   /// \param[in] field_id The field ID.
   /// \param[in] name The field name.
