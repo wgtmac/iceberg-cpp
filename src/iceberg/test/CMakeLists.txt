@@ -149,6 +149,9 @@ add_iceberg_test(puffin_test
                  puffin_json_test.cc
                  puffin_reader_writer_test.cc)
 
+add_executable(snapshot_summary_benchmark snapshot_summary_benchmark.cc)
+target_link_libraries(snapshot_summary_benchmark PRIVATE iceberg_static)
+
 if(ICEBERG_BUILD_BUNDLE)
   add_iceberg_test(avro_test
                    USE_BUNDLE

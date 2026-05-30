@@ -32,23 +32,6 @@
 
 namespace iceberg {
 
-namespace {
-
-/// \brief Helper function to conditionally add a property to the summary
-template <typename T>
-void SetIf(bool condition, std::unordered_map<std::string, std::string>& builder,
-           const std::string& property, T value) {
-  if (condition) {
-    if constexpr (std::is_same_v<T, const char*> || std::is_same_v<T, std::string> ||
-                  std::is_convertible_v<T, std::string_view>) {
-      builder[property] = value;
-    } else {
-      builder[property] = std::to_string(value);
-    }
-  }
-}
-
-}  // namespace
 
 bool SnapshotRef::Branch::Equals(const SnapshotRef::Branch& other) const {
   return min_snapshots_to_keep == other.min_snapshots_to_keep &&
@@ -300,45 +283,6 @@ void SnapshotSummaryBuilder::UpdateMetrics::Clear() {
   trust_size_and_delete_counts_ = true;
 }
 
-void SnapshotSummaryBuilder::UpdateMetrics::AddTo(
-    std::unordered_map<std::string, std::string>& builder) const {
-  SetIf(added_files_ > 0, builder, SnapshotSummaryFields::kAddedDataFiles, added_files_);
-  SetIf(removed_files_ > 0, builder, SnapshotSummaryFields::kDeletedDataFiles,
-        removed_files_);
-  SetIf(added_eq_delete_files_ > 0, builder, SnapshotSummaryFields::kAddedEqDeleteFiles,
-        added_eq_delete_files_);
-  SetIf(removed_eq_delete_files_ > 0, builder,
-        SnapshotSummaryFields::kRemovedEqDeleteFiles, removed_eq_delete_files_);
-  SetIf(added_pos_delete_files_ > 0, builder, SnapshotSummaryFields::kAddedPosDeleteFiles,
-        added_pos_delete_files_);
-  SetIf(removed_pos_delete_files_ > 0, builder,
-        SnapshotSummaryFields::kRemovedPosDeleteFiles, removed_pos_delete_files_);
-  SetIf(added_delete_files_ > 0, builder, SnapshotSummaryFields::kAddedDeleteFiles,
-        added_delete_files_);
-  SetIf(removed_delete_files_ > 0, builder, SnapshotSummaryFields::kRemovedDeleteFiles,
-        removed_delete_files_);
-  SetIf(added_dvs_ > 0, builder, SnapshotSummaryFields::kAddedDVs, added_dvs_);
-  SetIf(removed_dvs_ > 0, builder, SnapshotSummaryFields::kRemovedDVs, removed_dvs_);
-  SetIf(added_records_ > 0, builder, SnapshotSummaryFields::kAddedRecords,
-        added_records_);
-  SetIf(deleted_records_ > 0, builder, SnapshotSummaryFields::kDeletedRecords,
-        deleted_records_);
-
-  if (trust_size_and_delete_counts_) {
-    SetIf(added_size_ > 0, builder, SnapshotSummaryFields::kAddedFileSize, added_size_);
-    SetIf(removed_size_ > 0, builder, SnapshotSummaryFields::kRemovedFileSize,
-          removed_size_);
-    SetIf(added_pos_deletes_ > 0, builder, SnapshotSummaryFields::kAddedPosDeletes,
-          added_pos_deletes_);
-    SetIf(removed_pos_deletes_ > 0, builder, SnapshotSummaryFields::kRemovedPosDeletes,
-          removed_pos_deletes_);
-    SetIf(added_eq_deletes_ > 0, builder, SnapshotSummaryFields::kAddedEqDeletes,
-          added_eq_deletes_);
-    SetIf(removed_eq_deletes_ > 0, builder, SnapshotSummaryFields::kRemovedEqDeletes,
-          removed_eq_deletes_);
-  }
-}
-
 void SnapshotSummaryBuilder::UpdateMetrics::AddedFile(const DataFile& file) {
   added_size_ += file.file_size_in_bytes;
 
@@ -499,20 +443,24 @@ std::unordered_map<std::string, std::string> SnapshotSummaryBuilder::Build() con
   // Copy custom summary properties
   builder.insert(properties_.begin(), properties_.end());
 
-  metrics_.AddTo(builder);
+  auto sink = [&builder](const std::string& key, const std::string& value) {
+    builder[key] = value;
+  };
 
-  SetIf(deleted_duplicate_files_ > 0, builder,
-        SnapshotSummaryFields::kDeletedDuplicatedFiles, deleted_duplicate_files_);
+  metrics_.AddTo(sink);
 
-  SetIf(trust_partition_metrics_, builder,
-        SnapshotSummaryFields::kChangedPartitionCountProp, partition_metrics_.size());
+  SetIf(deleted_duplicate_files_ > 0, sink, SnapshotSummaryFields::kDeletedDuplicatedFiles,
+        deleted_duplicate_files_);
+
+  SetIf(trust_partition_metrics_, sink, SnapshotSummaryFields::kChangedPartitionCountProp,
+        partition_metrics_.size());
 
   // Add partition summaries if enabled
   if (trust_partition_metrics_ && max_changed_partitions_for_summaries_ >= 0 &&
       partition_metrics_.size() <=
           static_cast<size_t>(max_changed_partitions_for_summaries_)) {
-    SetIf(!partition_metrics_.empty(), builder,
-          SnapshotSummaryFields::kPartitionSummaryProp, "true");
+    SetIf(!partition_metrics_.empty(), sink, SnapshotSummaryFields::kPartitionSummaryProp,
+          "true");
     for (const auto& [key, metrics] : partition_metrics_) {
       if (!key.empty()) {
         builder[SnapshotSummaryFields::kChangedPartitionPrefix + key] =
@@ -540,20 +488,18 @@ Status SnapshotSummaryBuilder::UpdatePartitions(const PartitionSpec& spec,
 }
 
 std::string SnapshotSummaryBuilder::PartitionSummary(const UpdateMetrics& metrics) const {
-  std::unordered_map<std::string, std::string> part_builder;
-  metrics.AddTo(part_builder);
-
-  // Format as comma-separated key=value pairs
-  std::ostringstream oss;
+  std::string result;
   bool first = true;
-  for (const auto& [key, value] : part_builder) {
+  metrics.AddTo([&result, &first](const std::string& key, const std::string& value) {
     if (!first) {
-      oss << ",";
+      result += ",";
     }
-    oss << key << "=" << value;
+    result += key;
+    result += "=";
+    result += value;
     first = false;
-  }
-  return oss.str();
+  });
+  return result;
 }
 
 }  // namespace iceberg
