@@ -21,6 +21,9 @@
 
 #include <memory>
 #include <utility>
+#include <variant>
+
+#include "iceberg/inspect/metadata_scan.h"
 
 namespace iceberg {
 
@@ -35,6 +38,19 @@ const std::shared_ptr<Table>& MetadataTable::source_table() const {
   return source_table_;
 }
 
+Result<std::unique_ptr<MetadataScanBuilder>> MetadataTable::NewScan() const {
+  return std::unique_ptr<MetadataScanBuilder>(new MetadataScanBuilder(*this));
+}
+
+Result<ArrowArrayStream> MetadataTable::ScanSnapshot(
+    const SnapshotSelection& snapshot_selection, const Schema& projected_schema) const {
+  if (!std::holds_alternative<std::monostate>(snapshot_selection.snapshot) ||
+      !snapshot_selection.ref_name.empty()) {
+    return NotSupported("Metadata table does not support time travel");
+  }
+  return ScanProjection(projected_schema);
+}
+
 TimeTravelMetadataTable::TimeTravelMetadataTable(std::shared_ptr<Table> source_table)
     : MetadataTable(std::move(source_table)) {}
 
@@ -42,13 +58,9 @@ TimeTravelMetadataTable::~TimeTravelMetadataTable() = default;
 
 bool TimeTravelMetadataTable::supports_time_travel() const noexcept { return true; }
 
-Result<ArrowArrayStream> TimeTravelMetadataTable::Scan() {
-  return ScanSnapshot(SnapshotSelection{});
-}
-
-Result<ArrowArrayStream> TimeTravelMetadataTable::Scan(
-    const SnapshotSelection& snapshot_selection) {
-  return ScanSnapshot(snapshot_selection);
+Result<ArrowArrayStream> TimeTravelMetadataTable::ScanProjection(
+    const Schema& projected_schema) const {
+  return ScanSnapshot(SnapshotSelection{}, projected_schema);
 }
 
 }  // namespace iceberg

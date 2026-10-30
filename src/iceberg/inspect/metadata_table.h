@@ -24,15 +24,13 @@
 
 #include <concepts>
 #include <memory>
-#include <string>
 #include <utility>
-#include <variant>
 
 #include "iceberg/arrow_c_data.h"
 #include "iceberg/iceberg_export.h"
+#include "iceberg/inspect/metadata_scan.h"
 #include "iceberg/result.h"
 #include "iceberg/type_fwd.h"
-#include "iceberg/util/timepoint.h"
 
 namespace iceberg {
 
@@ -64,7 +62,7 @@ class ICEBERG_EXPORT MetadataTable {
   /// \brief Return this metadata table's kind.
   virtual Kind kind() const noexcept = 0;
 
-  /// \brief Return the schema of rows emitted by scans.
+  /// \brief Return the complete canonical schema of this metadata table.
   virtual const std::shared_ptr<Schema>& schema() const = 0;
 
   /// \brief Return the source table whose metadata is exposed.
@@ -73,36 +71,44 @@ class ICEBERG_EXPORT MetadataTable {
   /// \brief Return whether this metadata table supports time travel.
   virtual bool supports_time_travel() const noexcept;
 
-  /// \brief Scan the metadata table without time travel.
+  /// \brief Create a builder for configuring a metadata table scan.
   ///
-  /// The caller owns the returned stream and must invoke its `release` callback
-  /// when the stream is no longer needed.
-  virtual Result<ArrowArrayStream> Scan() = 0;
+  /// A builder with no options scans all columns of the current snapshot on the main
+  /// branch. This table must outlive the builder.
+  virtual Result<std::unique_ptr<MetadataScanBuilder>> NewScan() const;
 
  protected:
   explicit MetadataTable(std::shared_ptr<Table> source_table);
 
+  /// \brief Implement a scan that returns the columns of a projected schema.
+  ///
+  /// \param projected_schema Projection of schema() with the columns to return. It
+  /// is only valid during this call.
+  virtual Result<ArrowArrayStream> ScanProjection(
+      const Schema& projected_schema) const = 0;
+
+  /// \brief Implement a scan for the requested snapshot selection.
+  ///
+  /// The default implementation scans the current snapshot on the main branch with
+  /// ScanProjection() and returns NotSupported for any other selection.
+  /// TimeTravelMetadataTable requires an implementation.
+  ///
+  /// \param snapshot_selection Snapshot ID, timestamp, and optional ref selection.
+  /// \param projected_schema Projection of schema() with the columns to return. It
+  /// is only valid during this call.
+  virtual Result<ArrowArrayStream> ScanSnapshot(
+      const SnapshotSelection& snapshot_selection, const Schema& projected_schema) const;
+
  private:
+  friend class MetadataScanBuilder;
+
   std::shared_ptr<Table> source_table_;
-};
-
-/// \brief Snapshot selection parameters for a time-travel scan.
-struct SnapshotSelection {
-  /// \brief Select the current snapshot, a snapshot ID, or an as-of timestamp.
-  ///
-  /// std::monostate selects the current snapshot.
-  std::variant<std::monostate, int64_t, TimePointMs> snapshot;
-
-  /// \brief Resolve the snapshot relative to this branch or tag.
-  ///
-  /// An empty string uses the main branch.
-  std::string ref_name;
 };
 
 /// \brief Base interface for metadata tables that support time travel.
 ///
-/// Keeping snapshot selection on this capability-specific interface prevents it from
-/// being exposed by metadata tables that do not support time travel.
+/// Scans of these tables accept MetadataScanBuilder::UseSnapshot(), UseRef(), and
+/// AsOfTime(), which MetadataScanBuilder::Build() rejects for other tables.
 class ICEBERG_EXPORT TimeTravelMetadataTable : public MetadataTable {
  public:
   ~TimeTravelMetadataTable() override;
@@ -110,21 +116,20 @@ class ICEBERG_EXPORT TimeTravelMetadataTable : public MetadataTable {
   /// \brief Return true because this interface supports time travel.
   bool supports_time_travel() const noexcept final;
 
-  /// \brief Scan using the current snapshot on the main branch.
-  Result<ArrowArrayStream> Scan() final;
-
-  /// \brief Scan using the requested snapshot selection.
-  ///
-  /// \param snapshot_selection Snapshot ID, timestamp, and optional ref selection.
-  /// \return An Arrow stream containing the metadata table rows, or an error.
-  Result<ArrowArrayStream> Scan(const SnapshotSelection& snapshot_selection);
-
  protected:
   explicit TimeTravelMetadataTable(std::shared_ptr<Table> source_table);
 
+  /// \brief Scan the current snapshot on the main branch.
+  Result<ArrowArrayStream> ScanProjection(const Schema& projected_schema) const final;
+
   /// \brief Implement a scan for the requested snapshot selection.
-  virtual Result<ArrowArrayStream> ScanSnapshot(
-      const SnapshotSelection& snapshot_selection) = 0;
+  ///
+  /// \param snapshot_selection Snapshot ID, timestamp, and optional ref selection.
+  /// \param projected_schema Projection of schema() with the columns to return. It
+  /// is only valid during this call.
+  Result<ArrowArrayStream> ScanSnapshot(const SnapshotSelection& snapshot_selection,
+                                        const Schema& projected_schema) const override =
+      0;
 };
 
 }  // namespace iceberg
