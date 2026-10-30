@@ -671,6 +671,49 @@ TEST_F(FileScanTaskReaderTest, OpenWithDeletionVectorFiltersRows) {
   ASSERT_NO_FATAL_FAILURE(VerifyStream(&stream, R"([[1, "Foo"], [3, "Baz"]])"));
 }
 
+TEST_F(FileScanTaskReaderTest, ReadsArrowValidateBatchProperty) {
+  ICEBERG_UNWRAP_OR_FAIL(
+      auto data_file,
+      MakeDataFile(table_schema_,
+                   R"([[1, "Foo", "blue"], [2, "Bar", "red"], [3, "Baz", "green"]])"));
+  ICEBERG_UNWRAP_OR_FAIL(
+      auto pos_delete, MakePositionDeleteFile(CreateNewTempFilePathWithSuffix(".parquet"),
+                                              {1}, data_file->file_path));
+  FileScanTask task(data_file, {pos_delete});
+
+  struct RestoreProjection {
+    ProjectionContext::ProjectBatchFunction function =
+        ProjectionContext::ResolveProjectBatchFunction();
+    ~RestoreProjection() { ProjectionContext::RegisterProjectBatchFunction(function); }
+  } restore;
+  ProjectionContext::RegisterProjectBatchFunction(
+      [](ArrowArray*, std::span<const int32_t>,
+         ProjectionContext& projection) -> Result<ArrowArray> {
+        return InvalidArgument("projection mode: {}",
+                               projection.validate_batch() ? "full" : "basic");
+      });
+
+  for (bool validate_batch : {true, false}) {
+    FileScanTaskReader::Options options{
+        .io = file_io_,
+        .table_schema = table_schema_,
+        .projected_schema = projected_schema_,
+    };
+    if (!validate_batch) {
+      options.properties[ReaderProperties::kArrowValidateBatch.key()] = "false";
+    }
+    ICEBERG_UNWRAP_OR_FAIL(auto reader, FileScanTaskReader::Make(std::move(options)));
+    ICEBERG_UNWRAP_OR_FAIL(auto stream, reader->Open(task));
+
+    ArrowArray array{};
+    EXPECT_NE(stream.get_next(&stream, &array), 0);
+    EXPECT_THAT(stream.get_last_error(&stream),
+                ::testing::HasSubstr(validate_batch ? "projection mode: full"
+                                                    : "projection mode: basic"));
+    stream.release(&stream);
+  }
+}
+
 TEST_F(FileScanTaskReaderTest, OpenWithEqualityDeletesAddsAndPrunesDeleteOnlyColumns) {
   ICEBERG_UNWRAP_OR_FAIL(
       auto data_file,

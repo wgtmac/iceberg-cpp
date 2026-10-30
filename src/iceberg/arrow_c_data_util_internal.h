@@ -68,13 +68,16 @@ class ICEBERG_EXPORT ProjectionContext {
   /// \param project_batch_function Optional implementation returned by
   ///   ProjectionContext::ResolveProjectBatchFunction, or nullptr to use the nanoarrow
   ///   path.
+  /// \param validate_batch Whether to perform full content validation. Disable only for
+  /// trusted input.
   /// \note It validates that output_schema selects or reorders complete top-level fields
   /// by field id. Nested pruning and type changes are rejected. The input_schema and
   /// output_schema passed to Make must outlive the context. ProjectBatch may lazily
   /// initialize backend cache; do not share one context across concurrent calls.
   static Result<ProjectionContext> Make(const Schema& input_schema,
                                         const Schema& output_schema,
-                                        ProjectBatchFunction project_batch_function);
+                                        ProjectBatchFunction project_batch_function,
+                                        bool validate_batch = true);
 
   ProjectionContext(ProjectionContext&&) noexcept;
   ProjectionContext& operator=(ProjectionContext&&) noexcept;
@@ -97,6 +100,8 @@ class ICEBERG_EXPORT ProjectionContext {
 
   ProjectBatchState& project_batch_state();
 
+  bool validate_batch() const;
+
  private:
   ProjectionContext() = default;
 
@@ -109,6 +114,7 @@ class ICEBERG_EXPORT ProjectionContext {
   ArrowSchema output_arrow_schema_{};
   ProjectBatchFunction project_batch_function_ = nullptr;
   ProjectBatchState project_batch_state_;
+  bool validate_batch_ = true;
 };
 
 /// \brief Concept for sources that can be wrapped as ArrowArrayStreams.
@@ -228,10 +234,11 @@ ICEBERG_EXPORT Result<ArrowArrayStream> MakeArrowArrayStream(
 /// \brief Project selected rows from a batch into complete top-level fields.
 ///
 /// `input_batch` is consumed by this function. If the projection carries a registered
-/// implementation, the call is delegated to it; otherwise the built-in nanoarrow
-/// implementation is used. The projection must have been created for the stable schema
-/// pair that describes the input batch and requested output. This function does not
-/// revalidate schema compatibility on each batch.
+/// implementation, the call is delegated to it after validation; otherwise the built-in
+/// nanoarrow implementation is used. The projection must have been created for the stable
+/// schema pair that describes the input batch and requested output. This function does
+/// not revalidate schema compatibility on each batch. Input arrays are validated
+/// according to the context policy before either backend runs.
 ///
 /// \param input_batch Owned Arrow C Data batch to project.
 /// \param row_indices Zero-based row positions to copy from `input_batch`.

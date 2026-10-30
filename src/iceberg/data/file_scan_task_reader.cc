@@ -213,9 +213,11 @@ class FileScanTaskReader::Impl {
     auto required_schema = delete_filter->RequiredSchema();
     auto project_batch_function = ProjectionContext::ResolveProjectBatchFunction();
     // ProjectionContext borrows schemas that are kept in MergeOnReadStreamSource.
-    ICEBERG_ASSIGN_OR_RAISE(auto projection_context,
-                            ProjectionContext::Make(*required_schema, *projected_schema_,
-                                                    project_batch_function));
+    ICEBERG_ASSIGN_OR_RAISE(
+        auto projection_context,
+        ProjectionContext::Make(*required_schema, *projected_schema_,
+                                project_batch_function,
+                                properties_.Get(ReaderProperties::kArrowValidateBatch)));
 
     auto options = MakeReaderOptions(task, io_, required_schema, filter, case_sensitive_,
                                      name_mapping_, properties_, data_file->first_row_id,
